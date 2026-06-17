@@ -1,0 +1,17 @@
+{
+  "name": "Fishing Time",
+  "short_name": "FishingTime",
+  "description": "Fishing Tide Intelligence System",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0A0F1D",
+  "theme_color": "#14b8a6",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

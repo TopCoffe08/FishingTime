@@ -49,14 +49,14 @@ export default function App() {
       
       {/* Header */}
       <header className="w-full max-w-5xl mx-auto p-4 md:p-6 sticky top-0 z-10">
-        <div className="flex items-center justify-between bg-slate-800/40 p-4 rounded-3xl border border-slate-700/50 backdrop-blur-md">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+        <div className="flex items-center justify-between bg-slate-800/80 md:bg-slate-800/40 p-4 rounded-3xl border border-slate-700/50 backdrop-blur-xl md:backdrop-blur-md shadow-lg shadow-black/20">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 bg-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20 shrink-0">
               <Droplets className="text-white w-6 h-6" />
             </div>
-            <div>
-              <h1 className="font-black text-xl tracking-tight text-white">FISHING TIDE <span className="text-teal-400">INTEL</span></h1>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-widest hidden sm:block">Digital Angler Assistant</p>
+            <div className="flex flex-col">
+              <h1 className="font-black text-lg md:text-xl tracking-tight text-white leading-none">FISHING TIDE <span className="text-teal-400">INTEL</span></h1>
+              <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest leading-normal">Digital Angler Assistant</p>
             </div>
           </div>
           <div className="flex items-center gap-3 sm:gap-6">
@@ -65,37 +65,39 @@ export default function App() {
               <p className="text-xs text-slate-400">{location.type}</p>
             </div>
             {weather && (
-              <div className="bg-slate-900/80 p-2 px-3 sm:px-4 rounded-2xl border border-slate-700 flex items-center gap-2 sm:gap-3">
+              <div className="bg-slate-900/80 p-2 px-3 sm:px-4 rounded-2xl border border-slate-700 flex items-center gap-2 sm:gap-3 shrink-0">
                 <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span className="text-sm font-bold tracking-tight text-emerald-400">{weather.temperature}°C</span>
+                <span className="text-xs md:text-sm font-bold tracking-tight text-emerald-400">{weather.temperature}°C</span>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      <main className="w-full max-w-5xl mx-auto p-4 md:px-6 space-y-6 flex-1">
-        {/* Tab Navigation */}
-        <nav className="flex justify-center mb-6">
-          <div className="bg-slate-800/80 backdrop-blur-xl border border-white/10 p-2 rounded-[2.5rem] flex gap-1 sm:gap-2">
+      <main className="w-full max-w-5xl mx-auto p-4 md:px-6 space-y-6 flex-1 pb-32 md:pb-6">
+        {/* Tab Navigation - Bottom on Mobile, Top on Desktop */}
+        <nav className="fixed bottom-0 left-0 right-0 md:static bg-slate-900/95 md:bg-transparent backdrop-blur-xl border-t border-slate-700 md:border-none z-50 p-3 md:p-0 md:mb-6 md:flex md:justify-center">
+          <div className="md:bg-slate-800/80 md:backdrop-blur-xl md:border md:border-white/10 md:p-2 md:rounded-[2.5rem] flex items-center justify-around md:gap-2">
             <button 
               onClick={() => setActiveTab('dashboard')}
-              className={`px-4 sm:px-8 py-2 font-bold text-sm rounded-[1.5rem] transition-colors ${activeTab === 'dashboard' ? 'bg-white text-slate-900 shadow-lg shadow-white/10 flex items-center gap-2' : 'text-slate-400 hover:text-white'}`}
+              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-colors ${activeTab === 'dashboard' ? 'text-teal-400 md:bg-white md:text-slate-900 md:shadow-lg md:shadow-white/10' : 'text-slate-400 hover:text-white'}`}
             >
-              <span className="hidden sm:inline">Home</span>
-              <span className="sm:hidden">Dash</span>
+              <MapPin size={24} className="md:hidden" />
+              <span>Dashboard</span>
             </button>
             <button 
               onClick={() => setActiveTab('species')}
-              className={`px-4 sm:px-8 py-2 font-bold text-sm rounded-[1.5rem] transition-colors ${activeTab === 'species' ? 'bg-white text-slate-900 shadow-lg shadow-white/10 flex items-center gap-2' : 'text-slate-400 hover:text-white'}`}
+              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-colors ${activeTab === 'species' ? 'text-teal-400 md:bg-white md:text-slate-900 md:shadow-lg md:shadow-white/10' : 'text-slate-400 hover:text-white'}`}
             >
-              Spesies
+              <Fish size={24} className="md:hidden" />
+              <span>Spesies</span>
             </button>
             <button 
               onClick={() => setActiveTab('log')}
-              className={`px-4 sm:px-8 py-2 font-bold text-sm rounded-[1.5rem] transition-colors ${activeTab === 'log' ? 'bg-white text-slate-900 shadow-lg shadow-white/10 flex items-center gap-2' : 'text-slate-400 hover:text-white'}`}
+              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-colors ${activeTab === 'log' ? 'text-teal-400 md:bg-white md:text-slate-900 md:shadow-lg md:shadow-white/10' : 'text-slate-400 hover:text-white'}`}
             >
-              Catatan
+              <BookOpen size={24} className="md:hidden" />
+              <span>Catatan</span>
             </button>
           </div>
         </nav>
@@ -105,22 +107,27 @@ export default function App() {
             {/* LEFT COLUMN */}
             <div className="md:col-span-5 lg:col-span-4 flex flex-col gap-6">
               {/* Location Selector styled as quick select block */}
-              <div className="bg-slate-800/50 p-5 rounded-[2rem] border border-slate-700">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block">Lokasi Memancing</label>
-                <div className="relative">
-                  <select 
-                    className="w-full bg-slate-900/60 border border-slate-700/50 text-slate-100 text-sm font-bold rounded-2xl focus:ring-teal-500 focus:border-teal-500 block p-3.5 appearance-none outline-none"
-                    value={location.name}
-                    onChange={(e) => {
-                      const loc = PRESET_LOCATIONS.find(l => l.name === e.target.value);
-                      if(loc) setLocation(loc);
-                    }}
-                  >
-                    {PRESET_LOCATIONS.map(loc => (
-                      <option key={loc.name} value={loc.name} className="bg-slate-800">{loc.name} ({loc.type})</option>
-                    ))}
-                  </select>
-                  <MapPin className="text-teal-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" size={18} />
+              <div className="bg-slate-800/50 p-4 md:p-5 rounded-[2rem] border border-slate-700 w-full">
+                <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block">Lokasi Memancing</label>
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <select 
+                      className="w-full bg-slate-900/60 border border-slate-700/50 text-slate-100 text-sm font-bold rounded-2xl focus:ring-teal-500 focus:border-teal-500 block p-3.5 appearance-none outline-none"
+                      value={location.name}
+                      onChange={(e) => {
+                        const loc = PRESET_LOCATIONS.find(l => l.name === e.target.value);
+                        if(loc) setLocation(loc);
+                      }}
+                    >
+                      {PRESET_LOCATIONS.map(loc => (
+                        <option key={loc.name} value={loc.name} className="bg-slate-800">{loc.name} ({loc.type})</option>
+                      ))}
+                    </select>
+                    <MapPin className="text-teal-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" size={18} />
+                  </div>
+                  <button className="flex items-center justify-center gap-2 bg-slate-700/50 hover:bg-slate-700 text-teal-400 font-bold text-[10px] md:text-sm py-3.5 px-4 rounded-2xl border border-slate-600/50 transition-colors shrink-0">
+                    <MapPin size={16} /> <span className="uppercase tracking-wider">GPS Saya</span>
+                  </button>
                 </div>
               </div>
 
@@ -180,7 +187,7 @@ export default function App() {
                ) : tide ? (
                  <>
                   {/* Tide Chart block styled exactly like the center column in HTML */}
-                  <div className="bg-slate-800/30 rounded-[2.5rem] border border-slate-700/50 p-6 flex flex-col flex-1 min-h-[400px]">
+                  <div className="bg-slate-800/30 rounded-[2.5rem] border border-slate-700/50 p-5 md:p-6 flex flex-col flex-1 min-h-[350px] md:min-h-[400px] w-full max-w-[100vw] overflow-hidden">
                     <div className="flex justify-between items-start mb-6">
                       <div>
                         <h2 className="text-3xl sm:text-4xl font-black tracking-tighter">{tide.currentHeight.toFixed(2)}<span className="text-lg text-slate-500 ml-1 font-normal">meters</span></h2>
