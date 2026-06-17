@@ -74,8 +74,10 @@ export const SPECIES_DB: FishSpecies[] = [
 ];
 
 export const PRESET_LOCATIONS = [
-  { name: "Muara Sungai Barito", type: "Muara", lat: -3.4, lon: 114.4 },
-  { name: "Sungai Mahakam", type: "Sungai", lat: -0.5, lon: 117.1 },
-  { name: "Pantai Losari", type: "Pantai", lat: -5.1, lon: 119.4 },
-  { name: "Pelabuhan Tanjung Priok", type: "Laut", lat: -6.1, lon: 106.8 }
+  { name: "Sungai Mahakam, Samarinda", type: "Sungai", lat: -0.50, lon: 117.15 },
+  { name: "Pantai Manggar, Balikpapan", type: "Pantai", lat: -1.22, lon: 116.92 },
+  { name: "Muara Teluk Balikpapan", type: "Muara", lat: -1.20, lon: 116.75 },
+  { name: "Danau Jempang, Kukar", type: "Rawa", lat: -0.51, lon: 116.15 },
+  { name: "Sungai Kelay, Berau", type: "Sungai", lat: 2.10, lon: 117.50 },
+  { name: "Pantai Lamaru", type: "Pantai", lat: -1.18, lon: 116.95 }
 ];

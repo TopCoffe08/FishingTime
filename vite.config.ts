@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: './', // Ensures relative path for assets, fixing GitHub Pages white screen
+    base: '/FishingTime/', // Exact repository name for GitHub Pages
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

@@ -4,17 +4,28 @@ import { PRESET_LOCATIONS, SPECIES_DB } from './data';
 import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord } from './types';
 import { TideChart } from './components/TideChart';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
-import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen } from 'lucide-react';
+import { id as idLocale } from 'date-fns/locale';
+import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X } from 'lucide-react';
 
 export default function App() {
   const [location, setLocation] = useState<FishingLocation>(PRESET_LOCATIONS[0]);
   const [tide, setTide] = useState<TidePrediction | null>(null);
   const [weather, setWeather] = useState<WeatherCondition | null>(null);
   const [moonPhase, setMoonPhase] = useState<string>('');
-  const [aiRec, setAiRec] = useState<string>('');
+  const [aiRec, setAiRec] = useState<{score: number, category: string, reason: string, simpleRec: string, verboseRec: string} | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log'>('dashboard');
+
+  const [logs, setLogs] = useState<Array<{id: string, notes: string, date: string, location: string}>>(() => {
+    const saved = localStorage.getItem('fishing_logs');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [isAddingLog, setIsAddingLog] = useState(false);
+  const [newLogNotes, setNewLogNotes] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('fishing_logs', JSON.stringify(logs));
+  }, [logs]);
 
   useEffect(() => {
     async function loadData() {
@@ -30,7 +41,8 @@ export default function App() {
           tideData: `${tide.status} (${tide.currentHeight}m)`,
           weatherData: `${weather.description}, ${weather.temperature}°C`,
           moonPhase: moonPhaseStr,
-          timeOfDay: format(new Date(), 'HH:mm')
+          timeOfDay: format(new Date(), 'HH:mm'),
+          logs: logs
         });
         setAiRec(rec);
 
@@ -42,7 +54,7 @@ export default function App() {
     }
     
     loadData();
-  }, [location]);
+  }, [location, logs]);
 
   return (
     <div className="min-h-screen bg-[#0A0F1D] text-slate-100 pb-20 md:pb-0 font-sans flex flex-col items-center">
@@ -112,20 +124,46 @@ export default function App() {
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="relative flex-1">
                     <select 
-                      className="w-full bg-slate-900/60 border border-slate-700/50 text-slate-100 text-sm font-bold rounded-2xl focus:ring-teal-500 focus:border-teal-500 block p-3.5 appearance-none outline-none"
+                      className="w-full h-12 md:h-14 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-sm font-bold rounded-2xl focus:ring-teal-500 focus:border-teal-500 block px-4 pr-10 appearance-none outline-none truncate"
                       value={location.name}
                       onChange={(e) => {
                         const loc = PRESET_LOCATIONS.find(l => l.name === e.target.value);
                         if(loc) setLocation(loc);
                       }}
                     >
+                      {location.type === "Koordinat Kustom" && (
+                        <option value={location.name} className="bg-slate-800">{location.name}</option>
+                      )}
                       {PRESET_LOCATIONS.map(loc => (
                         <option key={loc.name} value={loc.name} className="bg-slate-800">{loc.name} ({loc.type})</option>
                       ))}
                     </select>
-                    <MapPin className="text-teal-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" size={18} />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-teal-400">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
                   </div>
-                  <button className="flex items-center justify-center gap-2 bg-slate-700/50 hover:bg-slate-700 text-teal-400 font-bold text-[10px] md:text-sm py-3.5 px-4 rounded-2xl border border-slate-600/50 transition-colors shrink-0">
+                  <button 
+                    onClick={() => {
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (pos) => {
+                            const { latitude, longitude } = pos.coords;
+                            if (latitude >= -3 && latitude <= 3 && longitude >= 113 && longitude <= 119) {
+                              setLocation({ name: "Lokasi GPS Anda", type: "Koordinat Kustom", lat: latitude, lon: longitude });
+                            } else {
+                              alert("Lokasi Anda berada di luar area yang didukung. Sistem ini difokuskan untuk wilayah perairan Kalimantan Timur.");
+                            }
+                          },
+                          (err) => {
+                            alert("Gagal mendapatkan lokasi. Pastikan izin GPS diaktifkan.");
+                          }
+                        );
+                      } else {
+                        alert("Browser Anda tidak mendukung GPS.");
+                      }
+                    }}
+                    className="flex items-center justify-center h-12 md:h-14 gap-2 bg-slate-700/50 hover:bg-slate-700 text-teal-400 font-bold text-xs md:text-sm px-4 md:px-6 rounded-2xl border border-slate-600/50 transition-colors shrink-0"
+                  >
                     <MapPin size={16} /> <span className="uppercase tracking-wider">GPS Saya</span>
                   </button>
                 </div>
@@ -141,13 +179,28 @@ export default function App() {
                   <div className="bg-gradient-to-br from-teal-600 to-emerald-600 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-center items-center text-center">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-4 text-teal-100 flex items-center gap-2">
-                       <CheckCircle2 size={16} /> AI Asisten
+                       <CheckCircle2 size={16} /> Skor Memancing AI
                     </h3>
-                    <div className="relative z-10 w-full mb-2">
-                      <p className="text-[13px] sm:text-sm font-bold leading-relaxed text-white italic drop-shadow-md">
-                        "{aiRec || "Menyusun rekomendasi terbaik..."}"
-                      </p>
-                    </div>
+                    {aiRec ? (
+                      <div className="relative z-10 w-full">
+                        <div className="flex items-end justify-center gap-1 mb-2">
+                          <span className="text-5xl sm:text-6xl font-black text-white tracking-tighter">{aiRec.score}</span>
+                          <span className="text-lg font-bold text-teal-200 mb-2">/100</span>
+                        </div>
+                        <div className="inline-block bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-4 border border-white/20 shadow-inner">
+                          <span className="text-sm font-bold text-white">{aiRec.category}</span>
+                        </div>
+                        <p className="text-xs sm:text-[13px] font-medium leading-relaxed text-teal-50 bg-black/10 p-3.5 rounded-2xl text-left border border-black/5">
+                          <strong className="text-white block mb-1 text-xs">🔍 Analisa:</strong> {aiRec.reason.charAt(0).toUpperCase() + aiRec.reason.slice(1)}.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="relative z-10 w-full mb-2">
+                        <p className="text-[13px] sm:text-sm font-bold leading-relaxed text-white italic drop-shadow-md">
+                          Menyusun rekomendasi terbaik...
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="bg-slate-800/50 p-5 rounded-[2rem] border border-slate-700">
@@ -278,17 +331,118 @@ export default function App() {
         )}
 
         {activeTab === 'log' && (
-          <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto mt-8">
-            <div className="bg-slate-800/30 px-6 py-16 rounded-[3rem] border border-slate-700/50 text-center flex flex-col items-center">
-              <div className="w-24 h-24 bg-slate-800 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl border border-slate-700 transform rotate-3">
-                <BookOpen className="text-teal-500 opacity-80" size={48} />
+          <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto md:mt-4">
+            
+            {!isAddingLog && logs.length === 0 && (
+              <div className="bg-slate-800/30 px-6 py-16 rounded-[3rem] border border-slate-700/50 text-center flex flex-col items-center">
+                <div className="w-24 h-24 bg-slate-800 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl border border-slate-700 transform rotate-3">
+                  <BookOpen className="text-teal-500 opacity-80" size={48} />
+                </div>
+                <h2 className="text-xl font-black text-white mb-3">Buku Catatan Tangkapan</h2>
+                <p className="text-slate-400 mb-8 max-w-sm mx-auto text-sm leading-relaxed font-medium">Catat hasil tangkapan Anda untuk membantu AI mempelajari pola perairan di lokasi favorit Anda.</p>
+                <button 
+                  onClick={() => setIsAddingLog(true)}
+                  className="bg-teal-500 hover:bg-teal-400 text-slate-900 font-black py-4 px-8 rounded-3xl shadow-xl shadow-teal-500/20 uppercase tracking-[0.2em] text-xs transition-colors flex items-center gap-2">
+                  <Plus size={16} /> Tambah Catatan
+                </button>
               </div>
-              <h2 className="text-xl font-black text-white mb-3">Buku Catatan Tangkapan</h2>
-              <p className="text-slate-400 mb-8 max-w-sm mx-auto text-sm leading-relaxed font-medium">Catat hasil tangkapan Anda untuk membantu AI mempelajari pola perairan di lokasi favorit Anda.</p>
-              <button className="bg-teal-500 hover:bg-teal-400 text-slate-900 font-black py-4 px-8 rounded-3xl shadow-xl shadow-teal-500/20 uppercase tracking-[0.2em] text-xs transition-colors flex items-center gap-2">
-                Tambah Catatan Baru
-              </button>
-            </div>
+            )}
+
+            {!isAddingLog && logs.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-lg font-black text-white px-2">Catatan Memancing Saya</h2>
+                  <button 
+                    onClick={() => setIsAddingLog(true)}
+                    className="bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 font-bold py-2 px-4 rounded-xl text-[10px] uppercase tracking-wider transition-colors flex items-center gap-2">
+                    <Plus size={14} /> Tambah Catatan
+                  </button>
+                </div>
+                
+                {logs.slice().reverse().map(log => (
+                  <div key={log.id} className="bg-slate-800/50 p-5 rounded-3xl border border-slate-700 relative group overflow-hidden">
+                    <div className="mb-3 flex justify-between items-start">
+                      <div className="text-xs text-slate-400 font-bold flex items-center gap-2">
+                        <Clock size={12} className="text-teal-400" /> {log.date}
+                      </div>
+                      <button 
+                        onClick={() => setLogs(logs.filter(l => l.id !== log.id))}
+                        className="text-slate-500 hover:text-red-400 transition-colors"
+                        title="Hapus Catatan"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="text-sm text-slate-400 font-medium mb-2 flex flex-col gap-1">
+                      <span className="flex items-center gap-2 text-slate-300">
+                        <MapPin size={14} className="text-emerald-400" /> {log.location}
+                      </span>
+                    </div>
+                    <p className="font-medium text-slate-200 mt-3 whitespace-pre-wrap">{log.notes}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isAddingLog && (
+              <div className="bg-slate-800/80 p-5 md:p-8 rounded-[2rem] border border-slate-700 shadow-xl">
+                <h2 className="text-lg font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+                  <BookOpen className="text-teal-400" /> Catat Hasil Tangkapan
+                </h2>
+                
+                <div className="flex flex-col gap-5">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Lokasi Memancing Saat Ini</label>
+                    <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 text-slate-300 font-bold text-sm">
+                      {location.name}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Detail Tangkapan (Umpan, Cuaca, Jenis Ikan)</label>
+                    <textarea 
+                      value={newLogNotes}
+                      onChange={(e) => setNewLogNotes(e.target.value)}
+                      placeholder="Contoh: Tangkapan lumayan hari ini. Cuaca mendung dan air sedang pasang naik. Berhasil menarik Kakap Putih menggunakan umpan udang hidup."
+                      className="w-full h-32 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-2xl focus:ring-teal-500 focus:border-teal-500 block p-4 placeholder-slate-600 resize-none outline-none"
+                    ></textarea>
+                  </div>
+                  
+                  <div className="flex gap-3 mt-4">
+                    <button 
+                      onClick={() => {
+                        setIsAddingLog(false);
+                        setNewLogNotes('');
+                      }}
+                      className="flex-1 bg-slate-700/50 hover:bg-slate-700 text-white font-bold py-3.5 rounded-2xl border border-slate-600/50 transition-colors text-xs uppercase tracking-wider"
+                    >
+                      Batal
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (!newLogNotes.trim()) return;
+                        
+                        const newLog = {
+                          id: Date.now().toString(),
+                          date: format(new Date(), 'dd MMM yyyy, HH:mm', { locale: idLocale }),
+                          location: location.name,
+                          notes: newLogNotes
+                        };
+                        
+                        setLogs([...logs, newLog]);
+                        setNewLogNotes('');
+                        setIsAddingLog(false);
+                      }}
+                      disabled={!newLogNotes.trim()}
+                      className="flex-1 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 disabled:hover:bg-teal-500 text-slate-900 font-black py-3.5 rounded-2xl shadow-lg shadow-teal-500/20 transition-colors text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                    >
+                      <Save size={16} /> Simpan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
           </div>
         )}
       </main>

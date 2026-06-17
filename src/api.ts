@@ -32,7 +32,10 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
 
   try {
     const [weatherRes, marineRes] = await Promise.all([
-      axios.get(weatherUrl),
+      axios.get(weatherUrl).catch(e => {
+        console.warn("Weather API failed, using fallback generated data for demo", e);
+        return { data: null };
+      }),
       axios.get(marineUrl).catch(e => {
         console.warn("Marine API failed, using fallback generated data for demo", e);
         return { data: null };
@@ -75,19 +78,23 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
 
     // Determine current status
     const currentHour = startOfHour(now);
-    const currentIndex = hourlyData.findIndex(d => d.time.getTime() === currentHour.getTime()) || 0;
+    let currentIndex = hourlyData.findIndex(d => d.time.getTime() === currentHour.getTime());
+    if (currentIndex === -1) currentIndex = 0; // Fallback to first element if exact time matches fail
     
+    let status: TidePrediction['status'] = "Pasang Naik";
     if (currentIndex >= 0 && currentIndex < hourlyData.length - 1) {
        currentHeight = hourlyData[currentIndex].height;
        const nextHeight = hourlyData[currentIndex+1].height;
-       var status: TidePrediction['status'] = nextHeight > currentHeight ? "Pasang Naik" : "Pasang Turun";
+       status = nextHeight > currentHeight ? "Pasang Naik" : "Pasang Turun";
+    } else if (hourlyData.length > 0) {
+       currentHeight = hourlyData[0].height;
     }
 
     // Find next high/low
     let nextHighTide: Date | null = null;
     let nextLowTide: Date | null = null;
 
-    let isIteratingHigh = status! === "Pasang Naik";
+    let isIteratingHigh = status === "Pasang Naik";
     for(let i=currentIndex; i<hourlyData.length - 1; i++) {
        if (isIteratingHigh && hourlyData[i].height > hourlyData[i+1].height) {
          nextHighTide = hourlyData[i].time;
@@ -133,15 +140,70 @@ export async function fetchAIRecommendation(params: {
   weatherData: string;
   moonPhase: string;
   timeOfDay: string;
+  logs?: Array<{notes: string, date: string, location: string}>;
 }) {
-  // Generate a static template recommendation based on the data directly in the client
-  // so the app can be deployed to GitHub pages without needing a backend server.
-  
+  let score = 40; // Base score
+  let reasonParts: string[] = [];
+
+  // 1. Tide condition
   const isRising = params.tideData.includes('Naik');
   const isFalling = params.tideData.includes('Turun');
   
+  if (isRising) {
+    score += 25;
+    reasonParts.push("air mulai naik membawa banyak oksigen");
+  } else if (isFalling) {
+    score += 15;
+    reasonParts.push("air sedang surut");
+  } else {
+    reasonParts.push("pergerakan air stabil");
+  }
+
+  // 2. Moon phase 
+  if (params.moonPhase.includes('Bulan Baru') || params.moonPhase.includes('Bulan Purnama')) {
+    score += 15;
+    reasonParts.push("fase bulan sangat mendukung arus pasang");
+  } else {
+    score += 5;
+    reasonParts.push("fase bulan cukup stabil");
+  }
+
+  // 3. Time of day
+  const hour = parseInt(params.timeOfDay.split(':')[0] || '12', 10);
+  if ((hour >= 5 && hour <= 9) || (hour >= 16 && hour <= 18)) {
+    score += 20;
+    reasonParts.push("waktu pagi/sore adalah periode aktif ikan mencari makan");
+  } else if (hour >= 19 || hour <= 4) {
+    score += 15;
+    reasonParts.push("waktu malam ideal untuk jenis ikan predator/udang");
+  } else {
+    score += 0;
+    reasonParts.push("suhu siang hari mungkin membuat ikan berteduh");
+  }
+
+  // 4. Logs bonus (up to +10)
+  if (params.logs && params.logs.length > 0) {
+    const locationLogs = params.logs.filter(l => l.location === params.location);
+    if (locationLogs.length > 0) {
+      score += Math.min(locationLogs.length * 2, 10);
+      reasonParts.push("berdasarkan data historis tangkapan Anda sebelumnya di lokasi ini");
+    }
+  }
+
+  // Cap score between 10 and 100
+  score = Math.max(10, Math.min(score, 100));
+
+  let category = "";
+  if (score >= 90) category = "Sangat Bagus 🎣";
+  else if (score >= 75) category = "Bagus 👍";
+  else if (score >= 50) category = "Cukup ⚠️";
+  else category = "Kurang Ideal 🌧️";
+
+  // Create simple recommendation
+  const simpleRec = `Apakah sekarang waktu yang tepat untuk memancing?\nSkor hari ini: ${score}/100 (${category})\nAlasan: ${reasonParts[0].charAt(0).toUpperCase() + reasonParts[0].slice(1)}, ${reasonParts.slice(1).join(', ')}.`;
+
+  // Original verbose recommendation
   let rec = `Berdasarkan analisa untuk lokasi ${params.location}:\n\n`;
-  
   rec += `Saat ini kondisi cuaca terpantau ${params.weatherData} dengan fase bulan ${params.moonPhase}. `;
   
   if (isRising) {
@@ -152,7 +214,22 @@ export async function fetchAIRecommendation(params: {
     rec += `Kondisi air cenderung stabil. Aktivitas ikan mungkin sedikit menurun, namun jenis ikan dan udang tertentu masih bisa ditargetkan di area dasar laut atau sungai. `;
   }
   
+  if (params.logs && params.logs.length > 0) {
+    const locationLogs = params.logs.filter(l => l.location === params.location);
+    if (locationLogs.length > 0) {
+      rec += `\n\nBerdasarkan dari ${locationLogs.length} catatan memancing Anda di ${params.location}, sistem intelijen kami melihat pola aktivitas yang serupa sesuai catatan terdahulu. Pertahankan teknik umpan yang berhasil sebelumnya!`;
+    } else {
+      rec += `\n\nSistem AI kami mempelajari dari total ${params.logs.length} catatan memancing Anda secara global, meskipun belum ada riwayat spesifik di lokasi ini. Cobalah menguji pola yang biasanya berhasil bagi Anda!`;
+    }
+  }
+  
   rec += `\n\nRekomendasi Waktu: Pagi atau sore hari umumnya selalu lebih baik, dipadukan dengan pergerakan air saat ini akan memaksimalkan peluang Anda. Semangat memancing!`;
   
-  return rec;
+  return {
+    score,
+    category,
+    reason: reasonParts.join(', '),
+    simpleRec,
+    verboseRec: rec
+  };
 }
