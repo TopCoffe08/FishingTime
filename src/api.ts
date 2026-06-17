@@ -134,11 +134,25 @@ export async function fetchAIRecommendation(params: {
   moonPhase: string;
   timeOfDay: string;
 }) {
-  try {
-    const res = await axios.post('/api/recommendation', params);
-    return res.data.recommendation;
-  } catch (error) {
-    console.error("Error fetching AI recommendation:", error);
-    return "Sistem asisten tidak terhubung. Namun berdasarkan waktu dan pasang surut saat ini, kondisi cukup memungkinkan untuk mencoba memancing. Hati-hati dengan perubahan cuaca dan arus air.";
+  // Generate a static template recommendation based on the data directly in the client
+  // so the app can be deployed to GitHub pages without needing a backend server.
+  
+  const isRising = params.tideData.includes('Naik');
+  const isFalling = params.tideData.includes('Turun');
+  
+  let rec = `Berdasarkan analisa untuk lokasi ${params.location}:\n\n`;
+  
+  rec += `Saat ini kondisi cuaca terpantau ${params.weatherData} dengan fase bulan ${params.moonPhase}. `;
+  
+  if (isRising) {
+    rec += `Air sedang pasang naik. Ini adalah waktu yang sangat ideal karena air baru membawa banyak oksigen dan makanan ke area dangkal. Ikan-ikan predator cenderung sangat aktif berburu. `;
+  } else if (isFalling) {
+    rec += `Air sedang surut turun. Ikan mulai bergerak lebih ke tengah atau ke area yang lebih dalam. Gunakan umpan di area lubuk atau sungai bagian tengah. `;
+  } else {
+    rec += `Kondisi air cenderung stabil. Aktivitas ikan mungkin sedikit menurun, namun jenis ikan dan udang tertentu masih bisa ditargetkan di area dasar laut atau sungai. `;
   }
+  
+  rec += `\n\nRekomendasi Waktu: Pagi atau sore hari umumnya selalu lebih baik, dipadukan dengan pergerakan air saat ini akan memaksimalkan peluang Anda. Semangat memancing!`;
+  
+  return rec;
 }
