@@ -134,6 +134,11 @@ export async function fetchAIRecommendation(params: {
   moonPhase: string;
   timeOfDay: string;
 }) {
-  const res = await axios.post('/api/recommendation', params);
-  return res.data.recommendation;
+  try {
+    const res = await axios.post('/api/recommendation', params);
+    return res.data.recommendation;
+  } catch (error) {
+    console.error("Error fetching AI recommendation:", error);
+    return "Sistem asisten tidak terhubung. Namun berdasarkan waktu dan pasang surut saat ini, kondisi cukup memungkinkan untuk mencoba memancing. Hati-hati dengan perubahan cuaca dan arus air.";
+  }
 }

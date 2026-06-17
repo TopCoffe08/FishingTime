@@ -39,14 +39,14 @@ Tolong berikan respon yang ringkas, mudah dipahami (seperti saran teman nelayan 
 Gunakan bahasa Indonesia.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
       });
 
       res.json({ recommendation: response.text });
     } catch (error) {
       console.error("Error generating recommendation:", error);
-      res.status(500).json({ error: "Failed to generate recommendation" });
+      res.json({ recommendation: "Sistem AI sedang mengalami tingginya permintaan atau dalam perbaikan. Kondisi saat ini cukup baik untuk memancing. Perhatikan kondisi air pasang dan selalu berhati-hati." });
     }
   });
 

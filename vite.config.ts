@@ -5,6 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    base: './', // Ensures relative path for assets, fixing GitHub Pages white screen
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
