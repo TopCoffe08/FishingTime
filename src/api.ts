@@ -14,6 +14,18 @@ function getWeatherDescription(code: number): string {
   return "Tidak Diketahui";
 }
 
+function getWindDirectionLabel(deg: number): string {
+  if (deg >= 337.5 || deg < 22.5) return "Utara";
+  if (deg >= 22.5 && deg < 67.5) return "Timur Laut";
+  if (deg >= 67.5 && deg < 112.5) return "Timur";
+  if (deg >= 112.5 && deg < 157.5) return "Tenggara";
+  if (deg >= 157.5 && deg < 202.5) return "Selatan";
+  if (deg >= 202.5 && deg < 247.5) return "Barat Daya";
+  if (deg >= 247.5 && deg < 292.5) return "Barat";
+  if (deg >= 292.5 && deg < 337.5) return "Barat Laut";
+  return "Tidak ada angin";
+}
+
 export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
   tide: TidePrediction,
   weather: WeatherCondition,
@@ -43,11 +55,13 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
       })
     ]);
 
-    const currentW = weatherRes.data?.current_weather || { temperature: 28, weathercode: 1, windspeed: 5 };
+    const currentW = weatherRes.data?.current_weather || { temperature: 28, weathercode: 1, windspeed: 5, winddirection: 0 };
     const weatherCond: WeatherCondition = {
       temperature: currentW.temperature,
       weatherCode: currentW.weathercode,
       windSpeed: currentW.windspeed,
+      windDirectionDeg: currentW.winddirection,
+      windDirectionLabel: currentW.winddirection !== undefined ? getWindDirectionLabel(currentW.winddirection) : undefined,
       description: getWeatherDescription(currentW.weathercode)
     };
 

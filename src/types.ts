@@ -30,6 +30,8 @@ export interface WeatherCondition {
   temperature: number;
   weatherCode: number;
   windSpeed: number;
+  windDirectionDeg?: number;
+  windDirectionLabel?: string;
   description: string;
 }
 

@@ -6,8 +6,14 @@ import { TideChart } from './components/TideChart';
 import { LocationMap } from './components/LocationMap';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X } from 'lucide-react';
+import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import localforage from 'localforage';
+
+localforage.config({
+  name: 'FishingTime',
+  storeName: 'logs_store'
+});
 
 export default function App() {
   const [location, setLocation] = useState<FishingLocation>(PRESET_LOCATIONS[0]);
@@ -20,10 +26,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log'>('dashboard');
   const [isAnalisaExpanded, setIsAnalisaExpanded] = useState(false);
 
-  const [logs, setLogs] = useState<CatchRecord[]>(() => {
-    const saved = localStorage.getItem('fishing_logs');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [logs, setLogs] = useState<CatchRecord[]>([]);
   const [isAddingLog, setIsAddingLog] = useState(false);
   const [newLogNotes, setNewLogNotes] = useState('');
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
@@ -35,6 +38,22 @@ export default function App() {
   const [now, setNow] = useState(new Date());
   const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    // Load logs on mount
+    localforage.getItem<CatchRecord[]>('fishing_logs').then(savedLogs => {
+      if (savedLogs) setLogs(savedLogs);
+      else {
+        // Migration from localStorage
+        const oldLogs = localStorage.getItem('fishing_logs');
+        if (oldLogs) {
+          const parsed = JSON.parse(oldLogs);
+          setLogs(parsed);
+          localforage.setItem('fishing_logs', parsed);
+        }
+      }
+    }).catch(err => console.error("Could not load logs", err));
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -50,7 +69,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('fishing_logs', JSON.stringify(logs));
+    localforage.setItem('fishing_logs', logs).catch(err => console.error("Could not save logs", err));
   }, [logs]);
 
   useEffect(() => {
@@ -290,8 +309,11 @@ export default function App() {
                         <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Peta Interaktif</h3>
                       </div>
                     </div>
+                    <div className="text-[10px] text-slate-400 mb-2 italic">Klik peta untuk melihat data di lokasi lain</div>
                     <div className="h-[250px] md:h-[300px] w-full relative z-0">
-                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} />
+                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} onLocationSelect={(lat, lon) => {
+                        setLocation({ name: "Custom Spot", type: "Laut", lat, lon });
+                      }} />
                     </div>
                   </div>
 
@@ -339,8 +361,16 @@ export default function App() {
                            <Wind className="text-teal-400" size={18} />
                          </div>
                          <div className="min-w-0">
-                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Kecepatan Angin</p>
-                           <p className="text-sm font-bold text-slate-200 mt-0.5 truncate">{weather.windSpeed} km/h</p>
+                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Angin</p>
+                           <div className="flex items-center gap-1.5 mt-0.5">
+                             <p className="text-sm font-bold text-slate-200 truncate">{weather.windSpeed} km/h</p>
+                             {weather.windDirectionLabel && (
+                               <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                 <Compass size={10} style={{ transform: `rotate(${weather.windDirectionDeg || 0}deg)` }} />
+                                 {weather.windDirectionLabel}
+                               </span>
+                             )}
+                           </div>
                          </div>
                       </div>
                     </div>
@@ -419,8 +449,11 @@ export default function App() {
                         <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Peta Interaktif</h3>
                       </div>
                     </div>
+                    <div className="text-[10px] text-slate-400 mb-2 italic">Klik peta untuk pindah lokasi</div>
                     <div className="h-[250px] md:h-[300px] w-full relative z-0">
-                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} />
+                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} onLocationSelect={(lat, lon) => {
+                        setLocation({ name: "Custom Spot", type: "Laut", lat, lon });
+                      }} />
                     </div>
                   </div>
 

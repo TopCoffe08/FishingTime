@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -27,7 +27,18 @@ function ChangeView({ center, zoom }: { center: [number, number], zoom: number }
   return null;
 }
 
-export function LocationMap({ lat, lon, name }: { lat: number, lon: number, name: string }) {
+function ClickHandler({ onLocationSelect }: { onLocationSelect?: (lat: number, lon: number) => void }) {
+  useMapEvents({
+    click(e) {
+      if (onLocationSelect) {
+        onLocationSelect(e.latlng.lat, e.latlng.lng);
+      }
+    },
+  });
+  return null;
+}
+
+export function LocationMap({ lat, lon, name, onLocationSelect }: { lat: number, lon: number, name: string, onLocationSelect?: (lat: number, lon: number) => void }) {
   return (
     <div className="w-full h-full rounded-[2rem] overflow-hidden border border-slate-700/50 relative z-0">
       <MapContainer center={[lat, lon]} zoom={12} scrollWheelZoom={false} style={{ height: '100%', width: '100%', minHeight: '200px' }} attributionControl={false}>
@@ -35,6 +46,7 @@ export function LocationMap({ lat, lon, name }: { lat: number, lon: number, name
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         <ChangeView center={[lat, lon]} zoom={13} />
+        <ClickHandler onLocationSelect={onLocationSelect} />
         <Marker position={[lat, lon]}>
           <Popup>
             <div className="text-center font-bold text-slate-800">
