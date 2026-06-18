@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { format, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { TideData, DailySolarData } from '../types';
 
-export function TideChart({ data, displayedDate, currentTime, dailySolar }: { data: TideData[], displayedDate: Date, currentTime: Date, dailySolar?: DailySolarData[] }) {
+const TideChartComponent = ({ data, displayedDate, currentTime, dailySolar }: { data: TideData[], displayedDate: Date, currentTime: Date, dailySolar?: DailySolarData[] }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
 
-  const chartData = React.useMemo(() => {
+  const displayedDateTime = displayedDate.getTime();
+  const currentDateTime = currentTime.getTime();
+
+  const chartData = useMemo(() => {
     // Show selected day's data
     const start = startOfDay(displayedDate).getTime();
     const end = endOfDay(displayedDate).getTime();
@@ -20,15 +23,23 @@ export function TideChart({ data, displayedDate, currentTime, dailySolar }: { da
         timestamp: d.time.getTime(),
         height: d.height,
       }));
-  }, [data, displayedDate]);
+  }, [data, displayedDateTime]);
 
-  const startTime = startOfDay(displayedDate).getTime();
-  const endTime = endOfDay(displayedDate).getTime();
-  const showCurrentTimeLine = isSameDay(currentTime, displayedDate);
+  const { startTime, endTime, showCurrentTimeLine } = useMemo(() => {
+    return {
+      startTime: startOfDay(displayedDate).getTime(),
+      endTime: endOfDay(displayedDate).getTime(),
+      showCurrentTimeLine: isSameDay(currentTime, displayedDate)
+    };
+  }, [displayedDateTime, currentDateTime]);
 
-  const solar = dailySolar?.find(s => s.date === format(displayedDate, 'yyyy-MM-dd'));
-  const sunriseTime = solar ? solar.sunrise.getTime() : null;
-  const sunsetTime = solar ? solar.sunset.getTime() : null;
+  const { sunriseTime, sunsetTime } = useMemo(() => {
+    const solar = dailySolar?.find(s => s.date === format(displayedDate, 'yyyy-MM-dd'));
+    return {
+      sunriseTime: solar ? solar.sunrise.getTime() : null,
+      sunsetTime: solar ? solar.sunset.getTime() : null
+    };
+  }, [dailySolar, displayedDateTime]);
 
   return (
     <div className="h-48 w-full mt-4 overflow-hidden pointer-events-auto relative">
@@ -88,4 +99,11 @@ export function TideChart({ data, displayedDate, currentTime, dailySolar }: { da
       </div>
     </div>
   );
-}
+};
+
+export const TideChart = React.memo(TideChartComponent, (prevProps, nextProps) => {
+  return prevProps.data === nextProps.data &&
+         prevProps.displayedDate.getTime() === nextProps.displayedDate.getTime() &&
+         prevProps.currentTime.getTime() === nextProps.currentTime.getTime() &&
+         prevProps.dailySolar === nextProps.dailySolar;
+});
