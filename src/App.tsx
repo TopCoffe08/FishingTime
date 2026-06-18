@@ -6,6 +6,7 @@ import { TideChart } from './components/TideChart';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
   const [location, setLocation] = useState<FishingLocation>(PRESET_LOCATIONS[0]);
@@ -14,18 +15,27 @@ export default function App() {
   const [moonPhase, setMoonPhase] = useState<string>('');
   const [aiRec, setAiRec] = useState<{score: number, category: string, reason: string, simpleRec: string, verboseRec: string} | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLocating, setIsLocating] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log'>('dashboard');
 
-  const [logs, setLogs] = useState<Array<{id: string, notes: string, date: string, location: string}>>(() => {
+  const [logs, setLogs] = useState<Array<{id: string, notes: string, date: string, location: string, photoUrl?: string}>>(() => {
     const saved = localStorage.getItem('fishing_logs');
     return saved ? JSON.parse(saved) : [];
   });
   const [isAddingLog, setIsAddingLog] = useState(false);
   const [newLogNotes, setNewLogNotes] = useState('');
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [searchLog, setSearchLog] = useState('');
+  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     localStorage.setItem('fishing_logs', JSON.stringify(logs));
   }, [logs]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -67,7 +77,7 @@ export default function App() {
               <Droplets className="text-white w-6 h-6" />
             </div>
             <div className="flex flex-col">
-              <h1 className="font-black text-lg md:text-xl tracking-tight text-white leading-none">FISHING TIDE <span className="text-teal-400">INTEL</span></h1>
+              <h1 className="font-black text-lg md:text-xl tracking-tight text-white leading-none">FISHING <span className="text-teal-400">TIME</span></h1>
               <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest leading-normal">Digital Angler Assistant</p>
             </div>
           </div>
@@ -102,7 +112,7 @@ export default function App() {
               className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-colors ${activeTab === 'species' ? 'text-teal-400 md:bg-white md:text-slate-900 md:shadow-lg md:shadow-white/10' : 'text-slate-400 hover:text-white'}`}
             >
               <Fish size={24} className="md:hidden" />
-              <span>Spesies</span>
+              <span className="whitespace-nowrap">Katalog Umpan</span>
             </button>
             <button 
               onClick={() => setActiveTab('log')}
@@ -114,9 +124,17 @@ export default function App() {
           </div>
         </nav>
 
-        {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 flex-1 min-h-0">
-            {/* LEFT COLUMN */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'dashboard' && (
+            <motion.div 
+              key="dashboard"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              className="grid grid-cols-1 md:grid-cols-12 gap-6 flex-1 min-h-0"
+            >
+              {/* LEFT COLUMN */}
             <div className="md:col-span-5 lg:col-span-4 flex flex-col gap-6">
               {/* Location Selector styled as quick select block */}
               <div className="bg-slate-800/50 p-4 md:p-5 rounded-[2rem] border border-slate-700 w-full">
@@ -131,8 +149,8 @@ export default function App() {
                         if(loc) setLocation(loc);
                       }}
                     >
-                      {location.type === "Koordinat Kustom" && (
-                        <option value={location.name} className="bg-slate-800">{location.name}</option>
+                      {location.type === "Perairan/GPS" && (
+                        <option value={location.name} className="bg-slate-800">{location.name} (Lokasi GPS)</option>
                       )}
                       {PRESET_LOCATIONS.map(loc => (
                         <option key={loc.name} value={loc.name} className="bg-slate-800">{loc.name} ({loc.type})</option>
@@ -145,16 +163,29 @@ export default function App() {
                   <button 
                     onClick={() => {
                       if (navigator.geolocation) {
+                        setIsLocating(true);
                         navigator.geolocation.getCurrentPosition(
-                          (pos) => {
+                          async (pos) => {
                             const { latitude, longitude } = pos.coords;
-                            if (latitude >= -3 && latitude <= 3 && longitude >= 113 && longitude <= 119) {
-                              setLocation({ name: "Lokasi GPS Anda", type: "Koordinat Kustom", lat: latitude, lon: longitude });
-                            } else {
-                              alert("Lokasi Anda berada di luar area yang didukung. Sistem ini difokuskan untuk wilayah perairan Kalimantan Timur.");
+                            try {
+                              // Try to get a meaningful location name using OpenStreetMap Nominatim
+                              const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                              if (geoRes.ok) {
+                                const geoData = await geoRes.json();
+                                // Prefer village, town, city, or fall back to generic label
+                                const locName = geoData.address.village || geoData.address.town || geoData.address.city || geoData.address.county || geoData.address.state || "Lokasi Anda";
+                                setLocation({ name: locName, type: "Perairan/GPS", lat: latitude, lon: longitude });
+                              } else {
+                                setLocation({ name: "Titik GPS", type: "Perairan/GPS", lat: latitude, lon: longitude });
+                              }
+                            } catch (e) {
+                              setLocation({ name: "Titik GPS", type: "Perairan/GPS", lat: latitude, lon: longitude });
+                            } finally {
+                              setIsLocating(false);
                             }
                           },
                           (err) => {
+                            setIsLocating(false);
                             alert("Gagal mendapatkan lokasi. Pastikan izin GPS diaktifkan.");
                           }
                         );
@@ -162,9 +193,15 @@ export default function App() {
                         alert("Browser Anda tidak mendukung GPS.");
                       }
                     }}
-                    className="flex items-center justify-center h-12 md:h-14 gap-2 bg-slate-700/50 hover:bg-slate-700 text-teal-400 font-bold text-xs md:text-sm px-4 md:px-6 rounded-2xl border border-slate-600/50 transition-colors shrink-0"
+                    disabled={isLocating}
+                    className={`flex items-center justify-center h-12 md:h-14 gap-2 bg-slate-700/50 text-teal-400 font-bold text-xs md:text-sm px-4 md:px-6 rounded-2xl border border-slate-600/50 transition-colors shrink-0 ${isLocating ? 'opacity-50 cursor-wait' : 'hover:bg-slate-700'}`}
                   >
-                    <MapPin size={16} /> <span className="uppercase tracking-wider">GPS Saya</span>
+                    {isLocating ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-500"></div>
+                    ) : (
+                      <MapPin size={16} />
+                    )}
+                    <span className="uppercase tracking-wider">{isLocating ? 'Mencari...' : 'GPS Saya'}</span>
                   </button>
                 </div>
               </div>
@@ -210,21 +247,39 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-slate-900/40 p-3 rounded-2xl border border-slate-700 flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
+                         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-800 flex items-center justify-center bg-amber-500/10">
                            <Moon className="text-amber-400" size={16} />
                          </div>
-                         <div>
-                           <p className="text-[10px] text-slate-500 font-black uppercase">Fase Bulan</p>
-                           <p className="text-xs font-bold text-slate-200 mt-0.5">{moonPhase}</p>
+                         <div className="min-w-0">
+                           <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase truncate">Fase Bulan</p>
+                           <p className="text-xs font-bold text-slate-200 mt-0.5 truncate">{moonPhase}</p>
                          </div>
                       </div>
                       <div className="bg-slate-900/40 p-3 rounded-2xl border border-slate-700 flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
-                           <Wind className="text-blue-400" size={16} />
+                         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-800 flex items-center justify-center bg-blue-500/10">
+                           <Droplets className="text-blue-400" size={16} />
                          </div>
-                         <div>
-                           <p className="text-[10px] text-slate-500 font-black uppercase">Angin & Cuaca</p>
-                           <p className="text-xs font-bold text-slate-200 mt-0.5">{weather.description}</p>
+                         <div className="min-w-0">
+                           <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase truncate">Cuaca</p>
+                           <p className="text-xs font-bold text-slate-200 mt-0.5 truncate">{weather.description}</p>
+                         </div>
+                      </div>
+                      <div className="bg-slate-900/40 p-3 rounded-2xl border border-slate-700 flex items-center gap-3">
+                         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-800 flex items-center justify-center bg-orange-500/10">
+                           <Thermometer className="text-orange-400" size={16} />
+                         </div>
+                         <div className="min-w-0">
+                           <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase truncate">Suhu Cuaca</p>
+                           <p className="text-xs font-bold text-slate-200 mt-0.5 truncate">{weather.temperature}°C</p>
+                         </div>
+                      </div>
+                      <div className="bg-slate-900/40 p-3 rounded-2xl border border-slate-700 flex items-center gap-3">
+                         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-800 flex items-center justify-center bg-teal-500/10">
+                           <Wind className="text-teal-400" size={16} />
+                         </div>
+                         <div className="min-w-0">
+                           <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase truncate">Kecepatan Angin</p>
+                           <p className="text-xs font-bold text-slate-200 mt-0.5 truncate">{weather.windSpeed} km/h</p>
                          </div>
                       </div>
                     </div>
@@ -266,7 +321,7 @@ export default function App() {
                     </div>
 
                     <div className="flex-1 w-full relative">
-                      <TideChart data={tide.hourlyData} currentTime={new Date()} />
+                      <TideChart data={tide.hourlyData} currentTime={now} />
                     </div>
                   </div>
                   
@@ -274,7 +329,7 @@ export default function App() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                      <div className="bg-slate-800/40 p-4 rounded-3xl border border-slate-700/50 flex flex-col items-center justify-center">
                         <p className="text-[10px] text-slate-500 font-black mb-1 tracking-widest">WAKTU</p>
-                        <p className="text-sm font-bold text-slate-200">{format(new Date(), 'HH:mm')}</p>
+                        <p className="text-sm font-bold text-slate-200">{format(now, 'HH:mm')}</p>
                      </div>
                      <div className="bg-slate-800/40 p-4 rounded-3xl border border-slate-700/50 flex flex-col items-center justify-center">
                         <p className="text-[10px] text-slate-500 font-black mb-1 tracking-widest">KONDISI</p>
@@ -289,13 +344,25 @@ export default function App() {
                  </>
                ) : null}
             </div>
-          </div>
-        )}
+          </motion.div>
+          )}
 
-        {activeTab === 'species' && (
-          <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto">
+          {activeTab === 'species' && (
+            <motion.div 
+              key="species"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              className="flex flex-col gap-6 w-full max-w-3xl mx-auto"
+            >
+              <div className="bg-slate-800/80 p-5 md:p-6 rounded-[2rem] border border-slate-700 shadow-xl overflow-hidden relative mb-2">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+              <h2 className="text-xl font-black text-white mb-2 uppercase tracking-tight">Katalog Umpan & Ikan Target</h2>
+              <p className="text-sm font-medium text-slate-400">Pilih umpan jitu dan teknik pancing berdasarkan kondisi riil dan tipe spesies di ekosistem perairan {location.type}.</p>
+            </div>
             <div className="bg-slate-800/30 p-6 rounded-[2.5rem] border border-slate-700/50">
-              <h2 className="text-sm font-black uppercase tracking-widest text-white mb-6">Database Spesies ({location.type})</h2>
+              <h2 className="text-sm font-black uppercase tracking-widest text-white mb-6">Daftar Rekomendasi ({location.type})</h2>
               <div className="grid gap-4">
                 {SPECIES_DB.filter(s => s.habitat.includes(location.type)).map(s => (
                   <div key={s.id} className="bg-slate-800/50 p-4 rounded-3xl border border-slate-700 flex flex-col md:flex-row gap-4 md:items-center">
@@ -327,13 +394,20 @@ export default function App() {
                 )}
               </div>
             </div>
-          </div>
-        )}
+            </motion.div>
+          )}
 
-        {activeTab === 'log' && (
-          <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto md:mt-4">
-            
-            {!isAddingLog && logs.length === 0 && (
+          {activeTab === 'log' && (
+            <motion.div 
+              key="log"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              className="flex flex-col gap-6 w-full max-w-2xl mx-auto md:mt-4"
+            >
+              
+              {!isAddingLog && logs.length === 0 && (
               <div className="bg-slate-800/30 px-6 py-16 rounded-[3rem] border border-slate-700/50 text-center flex flex-col items-center">
                 <div className="w-24 h-24 bg-slate-800 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl border border-slate-700 transform rotate-3">
                   <BookOpen className="text-teal-500 opacity-80" size={48} />
@@ -350,16 +424,27 @@ export default function App() {
 
             {!isAddingLog && logs.length > 0 && (
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-3">
                   <h2 className="text-lg font-black text-white px-2">Catatan Memancing Saya</h2>
-                  <button 
-                    onClick={() => setIsAddingLog(true)}
-                    className="bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 font-bold py-2 px-4 rounded-xl text-[10px] uppercase tracking-wider transition-colors flex items-center gap-2">
-                    <Plus size={14} /> Tambah Catatan
-                  </button>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <input 
+                      type="text" 
+                      placeholder="Cari catatan..." 
+                      value={searchLog}
+                      onChange={(e) => setSearchLog(e.target.value)}
+                      className="flex-1 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-xs font-medium rounded-xl px-3 py-2 outline-none focus:border-teal-500"
+                    />
+                    <button 
+                      onClick={() => setIsAddingLog(true)}
+                      className="bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 font-bold py-2 px-3 sm:px-4 rounded-xl text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shrink-0">
+                      <Plus size={14} /> <span className="hidden sm:inline">Tambah Catatan</span> <span className="sm:hidden">Tambah</span>
+                    </button>
+                  </div>
                 </div>
                 
-                {logs.slice().reverse().map(log => (
+                {logs.slice().reverse()
+                  .filter(log => log.notes.toLowerCase().includes(searchLog.toLowerCase()) || log.location.toLowerCase().includes(searchLog.toLowerCase()))
+                  .map(log => (
                   <div key={log.id} className="bg-slate-800/50 p-5 rounded-3xl border border-slate-700 relative group overflow-hidden">
                     <div className="mb-3 flex justify-between items-start">
                       <div className="text-xs text-slate-400 font-bold flex items-center gap-2">
@@ -373,6 +458,13 @@ export default function App() {
                         <X size={16} />
                       </button>
                     </div>
+                    {log.photoUrl && (
+                      <div className="my-4 rounded-2xl overflow-hidden border border-slate-700 aspect-video w-full bg-slate-900 flex items-center justify-center relative">
+                        <img src={log.photoUrl} alt="Tangkapan" className="w-full h-full object-cover" onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="%23334155" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+                        }} />
+                      </div>
+                    )}
                     <div className="text-sm text-slate-400 font-medium mb-2 flex flex-col gap-1">
                       <span className="flex items-center gap-2 text-slate-300">
                         <MapPin size={14} className="text-emerald-400" /> {log.location}
@@ -408,11 +500,26 @@ export default function App() {
                     ></textarea>
                   </div>
                   
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block flex items-center justify-between">
+                      <span>Lampirkan Foto/Gambar</span>
+                      <span className="text-[8px] sm:text-[10px] opacity-75 font-normal normal-case">(Opsional) Masukkan URL foto</span>
+                    </label>
+                    <input 
+                      type="url"
+                      value={newPhotoUrl}
+                      onChange={(e) => setNewPhotoUrl(e.target.value)}
+                      placeholder="https://contoh.com/foto-ikan.jpg"
+                      className="w-full h-12 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-600 outline-none"
+                    />
+                  </div>
+                  
                   <div className="flex gap-3 mt-4">
                     <button 
                       onClick={() => {
                         setIsAddingLog(false);
                         setNewLogNotes('');
+                        setNewPhotoUrl('');
                       }}
                       className="flex-1 bg-slate-700/50 hover:bg-slate-700 text-white font-bold py-3.5 rounded-2xl border border-slate-600/50 transition-colors text-xs uppercase tracking-wider"
                     >
@@ -426,11 +533,13 @@ export default function App() {
                           id: Date.now().toString(),
                           date: format(new Date(), 'dd MMM yyyy, HH:mm', { locale: idLocale }),
                           location: location.name,
-                          notes: newLogNotes
+                          notes: newLogNotes,
+                          photoUrl: newPhotoUrl.trim() || undefined
                         };
                         
                         setLogs([...logs, newLog]);
                         setNewLogNotes('');
+                        setNewPhotoUrl('');
                         setIsAddingLog(false);
                       }}
                       disabled={!newLogNotes.trim()}
@@ -443,8 +552,9 @@ export default function App() {
               </div>
             )}
             
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

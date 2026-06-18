@@ -1,5 +1,5 @@
 {
-  "name": "Fishing Tide Intelligence System",
+  "name": "Fishing Time",
   "description": "A smart fishing assistant combining real-time tidal data, lunar phases, and environmental factors to predict the best fishing opportunities.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

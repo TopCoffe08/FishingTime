@@ -1,7 +1,7 @@
 {
   "name": "Fishing Time",
   "short_name": "FishingTime",
-  "description": "Fishing Tide Intelligence System",
+  "description": "Fishing Time - Digital Angler Assistant",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0A0F1D",
