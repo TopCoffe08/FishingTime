@@ -74,10 +74,14 @@ export const SPECIES_DB: FishSpecies[] = [
 ];
 
 export const PRESET_LOCATIONS = [
+  { name: "Spot GPS Saat Ini", type: "Perairan/GPS", lat: -1.22, lon: 116.92 },
   { name: "Sungai Mahakam, Samarinda", type: "Sungai", lat: -0.50, lon: 117.15 },
   { name: "Pantai Manggar, Balikpapan", type: "Pantai", lat: -1.22, lon: 116.92 },
   { name: "Muara Teluk Balikpapan", type: "Muara", lat: -1.20, lon: 116.75 },
-  { name: "Danau Jempang, Kukar", type: "Rawa", lat: -0.51, lon: 116.15 },
-  { name: "Sungai Kelay, Berau", type: "Sungai", lat: 2.10, lon: 117.50 },
-  { name: "Pantai Lamaru", type: "Pantai", lat: -1.18, lon: 116.95 }
+  { name: "Danau Jempang, Kukar", type: "Danau", lat: -0.49, lon: 116.18 },
+  { name: "Pulau Derawan, Berau", type: "Laut", lat: 2.28, lon: 118.24 },
+  { name: "Pantai Lamaru, Balikpapan", type: "Pantai", lat: -1.18, lon: 116.95 },
+  { name: "Muara Badak, Kukar", type: "Muara", lat: -0.38, lon: 117.42 },
+  { name: "Teluk Sangkulirang, Kutim", type: "Laut", lat: 0.95, lon: 117.95 },
+  { name: "Sungai Kelay, Berau", type: "Sungai", lat: 2.15, lon: 117.48 }
 ];

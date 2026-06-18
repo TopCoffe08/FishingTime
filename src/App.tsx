@@ -39,6 +39,24 @@ export default function App() {
   const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+  const handleMapClick = async (lat: number, lon: number) => {
+    setIsLocating(true);
+    try {
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        const locName = geoData.address?.village || geoData.address?.town || geoData.address?.city || geoData.address?.county || geoData.address?.state || "Custom Spot";
+        setLocation({ name: locName, type: "Laut", lat, lon });
+      } else {
+        setLocation({ name: "Custom Spot", type: "Laut", lat, lon });
+      }
+    } catch (e) {
+      setLocation({ name: "Custom Spot", type: "Laut", lat, lon });
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
   useEffect(() => {
     // Load logs on mount
     localforage.getItem<CatchRecord[]>('fishing_logs').then(savedLogs => {
@@ -144,28 +162,28 @@ export default function App() {
 
       <main className="w-full max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 flex-1 pb-32 md:pb-8">
         {/* Tab Navigation - Bottom on Mobile, Top on Desktop */}
-        <nav className="fixed bottom-0 left-0 right-0 md:static bg-slate-900/95 md:bg-transparent backdrop-blur-xl border-t border-slate-700 md:border-none z-50 p-3 md:p-0 md:mb-8 md:flex md:justify-center">
-          <div className="md:bg-slate-800/80 md:backdrop-blur-xl md:border md:border-white/10 md:p-2 md:rounded-[2.5rem] flex items-center justify-around md:gap-2">
+        <nav className="fixed bottom-0 left-0 right-0 md:sticky md:top-6 bg-slate-900/95 md:bg-transparent backdrop-blur-xl border-t border-slate-700 md:border-none z-50 p-2 sm:p-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-0 md:p-0 md:mb-10 md:flex md:justify-center">
+          <div className="md:bg-slate-800/90 md:backdrop-blur-2xl md:border md:border-slate-600/50 md:p-2 md:rounded-[2.5rem] flex items-center justify-around md:gap-2 md:shadow-2xl">
             <button 
               onClick={() => setActiveTab('dashboard')}
-              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-colors ${activeTab === 'dashboard' ? 'text-teal-400 md:bg-white md:text-slate-900 md:shadow-lg md:shadow-white/10' : 'text-slate-400 hover:text-white'}`}
+              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 sm:px-4 md:px-8 py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-all rounded-xl ${activeTab === 'dashboard' ? 'text-teal-400 bg-teal-500/10 md:bg-teal-500 md:text-slate-900 md:shadow-lg md:shadow-teal-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
             >
-              <MapPin size={24} className="md:hidden" />
+              <MapPin size={20} className="md:hidden mb-0.5" />
               <span>Dashboard</span>
             </button>
             <button 
               onClick={() => setActiveTab('species')}
-              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-colors ${activeTab === 'species' ? 'text-teal-400 md:bg-white md:text-slate-900 md:shadow-lg md:shadow-white/10' : 'text-slate-400 hover:text-white'}`}
+              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 sm:px-4 md:px-8 py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-all rounded-xl ${activeTab === 'species' ? 'text-teal-400 bg-teal-500/10 md:bg-teal-500 md:text-slate-900 md:shadow-lg md:shadow-teal-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
             >
-              <Fish size={24} className="md:hidden" />
-              <span className="whitespace-nowrap">Katalog Umpan</span>
+              <Fish size={20} className="md:hidden mb-0.5" />
+              <span className="whitespace-nowrap">Katalog</span>
             </button>
             <button 
               onClick={() => setActiveTab('log')}
-              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-colors ${activeTab === 'log' ? 'text-teal-400 md:bg-white md:text-slate-900 md:shadow-lg md:shadow-white/10' : 'text-slate-400 hover:text-white'}`}
+              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 sm:px-4 md:px-8 py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-all rounded-xl ${activeTab === 'log' ? 'text-teal-400 bg-teal-500/10 md:bg-teal-500 md:text-slate-900 md:shadow-lg md:shadow-teal-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
             >
-              <BookOpen size={24} className="md:hidden" />
-              <span>Jurnal Tangkapan</span>
+              <BookOpen size={20} className="md:hidden mb-0.5" />
+              <span>Jurnal</span>
             </button>
           </div>
         </nav>
@@ -195,8 +213,8 @@ export default function App() {
                         if(loc) setLocation(loc);
                       }}
                     >
-                      {location.type === "Perairan/GPS" && (
-                        <option value={location.name} className="bg-slate-800">{location.name} (Lokasi GPS)</option>
+                      {!PRESET_LOCATIONS.some(l => l.name === location.name) && (
+                        <option value={location.name} className="bg-slate-800">{location.name} ({location.type})</option>
                       )}
                       {PRESET_LOCATIONS.map(loc => (
                         <option key={loc.name} value={loc.name} className="bg-slate-800">{loc.name} ({loc.type})</option>
@@ -300,21 +318,6 @@ export default function App() {
                         </p>
                       </div>
                     )}
-                  </div>
-
-                  <div className="hidden md:block bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700">
-                    <div className="flex justify-between items-center mb-4 md:mb-6">
-                      <div className="flex items-center gap-2">
-                        <span className="text-teal-400"><MapPin size={20} /></span>
-                        <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Peta Interaktif</h3>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mb-2 italic">Klik peta untuk melihat data di lokasi lain</div>
-                    <div className="h-[250px] md:h-[300px] w-full relative z-0">
-                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} onLocationSelect={(lat, lon) => {
-                        setLocation({ name: "Custom Spot", type: "Laut", lat, lon });
-                      }} />
-                    </div>
                   </div>
 
                   <div className="bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700">
@@ -441,37 +444,18 @@ export default function App() {
                     </div>
                   </div>
                   
-                  {/* Mobile Interactive Map */}
-                  <div className="md:hidden bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700 mb-6">
+                  {/* Unified Interactive Map */}
+                  <div className="bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700">
                     <div className="flex justify-between items-center mb-4 md:mb-6">
                       <div className="flex items-center gap-2">
                         <span className="text-teal-400"><MapPin size={20} /></span>
                         <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Peta Interaktif</h3>
                       </div>
                     </div>
-                    <div className="text-[10px] text-slate-400 mb-2 italic">Klik peta untuk pindah lokasi</div>
-                    <div className="h-[250px] md:h-[300px] w-full relative z-0">
-                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} onLocationSelect={(lat, lon) => {
-                        setLocation({ name: "Custom Spot", type: "Laut", lat, lon });
-                      }} />
+                    <div className="text-[10px] text-slate-400 mb-3 italic">ℹ️ Klik area peta untuk merubah lokasi analisis. Info pasang surut dan cuaca difetch ulang otomatis.</div>
+                    <div className="h-[250px] md:h-[350px] w-full relative z-0">
+                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} onLocationSelect={handleMapClick} />
                     </div>
-                  </div>
-
-                  {/* Quick visual stats beneath chart if needed */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                     <div className="bg-slate-800/40 p-4 md:p-5 rounded-[2rem] border border-slate-700/50 flex flex-col items-center justify-center">
-                        <p className="text-[10px] md:text-xs text-slate-500 font-black mb-1 md:mb-2 tracking-widest">WAKTU</p>
-                        <p className="text-sm md:text-base font-bold text-slate-200">{format(now, 'HH:mm')}</p>
-                     </div>
-                     <div className="bg-slate-800/40 p-4 md:p-5 rounded-[2rem] border border-slate-700/50 flex flex-col items-center justify-center">
-                        <p className="text-[10px] md:text-xs text-slate-500 font-black mb-1 md:mb-2 tracking-widest">KONDISI</p>
-                        <p className="text-sm md:text-base font-bold text-amber-400 uppercase">{weather?.description || 'Stabil'}</p>
-                     </div>
-                     <div className="bg-slate-800/40 p-4 md:p-5 rounded-[2rem] border border-slate-700/50 flex flex-col items-center justify-center md:col-span-2 hidden md:flex">
-                        <button className="w-full h-full text-xs md:text-sm font-black text-teal-400 uppercase tracking-widest hover:text-teal-300 transition-colors flex items-center justify-center gap-2">
-                          <Clock size={18} /> Update Real-Time
-                        </button>
-                     </div>
                   </div>
                  </>
                ) : null}
