@@ -64,6 +64,17 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
       }
     }
     
+    // Simple moon phase approximation
+    const lunarCycle = 29.53;
+    const knownNewMoon = new Date("2024-01-11T11:57:00Z");
+    const diff = now.getTime() - knownNewMoon.getTime();
+    const daysSince = diff / (1000 * 60 * 60 * 24);
+    const currentPhase = daysSince % lunarCycle;
+    
+    let moonPhaseStr = "Bulan Separuh";
+    if (currentPhase < 2 || currentPhase > 27.5) moonPhaseStr = "Bulan Baru (Gelap)";
+    else if (currentPhase > 13 && currentPhase < 16.5) moonPhaseStr = "Bulan Purnama";
+
     if (marineRes.data && marineRes.data.hourly && marineRes.data.hourly.sea_level) {
       const times = marineRes.data.hourly.time;
       const levels = marineRes.data.hourly.sea_level;
@@ -79,11 +90,12 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
     } else {
       // Fallback: Generate sine wave tide curve for demo functionality
       const baseHeight = 1.0;
+      const tideMultiplier = 1 + 0.3 * Math.cos((currentPhase / lunarCycle) * Math.PI * 2 * 2); // Spring/neap tide modulation
       const startOfDayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       for(let i=-48; i<168; i++) {
         const t = addHours(startOfDayTime, i);
         // Simple 12-hour tide cycle
-        const h = baseHeight + Math.sin((t.getTime() / (1000 * 60 * 60)) * (Math.PI / 6)) * 1.5;
+        const h = baseHeight + Math.sin((t.getTime() / (1000 * 60 * 60)) * (Math.PI / 6)) * 1.5 * tideMultiplier;
         hourlyData.push({ time: t, height: Number(h.toFixed(2)) });
       }
     }
@@ -116,17 +128,6 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
          break;
        }
     }
-
-    // Simple moon phase approximation
-    const lunarCycle = 29.53;
-    const knownNewMoon = new Date("2024-01-11T11:57:00Z");
-    const diff = now.getTime() - knownNewMoon.getTime();
-    const daysSince = diff / (1000 * 60 * 60 * 24);
-    const currentPhase = daysSince % lunarCycle;
-    
-    let moonPhaseStr = "Bulan Separuh";
-    if (currentPhase < 2 || currentPhase > 27.5) moonPhaseStr = "Bulan Baru (Gelap)";
-    else if (currentPhase > 13 && currentPhase < 16.5) moonPhaseStr = "Bulan Purnama";
 
     return {
       tide: {

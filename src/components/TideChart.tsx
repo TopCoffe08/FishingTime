@@ -53,7 +53,17 @@ export function TideChart({ data, displayedDate, currentTime, dailySolar }: { da
               axisLine={false} 
               stroke="#94a3b8" 
             />
-            <YAxis fontSize={10} tickLine={false} axisLine={false} stroke="#94a3b8" />
+            <YAxis 
+              fontSize={10} 
+              tickLine={false} 
+              axisLine={false} 
+              stroke="#94a3b8" 
+              domain={[
+                (dataMin: number) => Number((dataMin - 0.2).toFixed(1)), 
+                (dataMax: number) => Number((dataMax + 0.2).toFixed(1))
+              ]}
+              tickFormatter={(val) => val.toFixed(1) + 'm'}
+            />
             <Tooltip 
               contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', color: '#f8fafc' }}
               itemStyle={{ color: '#2dd4bf', fontWeight: 'bold' }}

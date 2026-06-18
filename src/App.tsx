@@ -71,7 +71,7 @@ export default function App() {
     <div className="min-h-screen bg-[#0A0F1D] text-slate-100 pb-20 md:pb-0 font-sans flex flex-col items-center">
       
       {/* Header */}
-      <header className="w-full max-w-5xl mx-auto p-4 md:p-6 sticky top-0 z-10">
+      <header className="w-full max-w-5xl mx-auto p-4 md:p-6 relative z-10">
         <div className="flex items-center justify-between bg-slate-800/80 md:bg-slate-800/40 p-4 rounded-3xl border border-slate-700/50 backdrop-blur-xl md:backdrop-blur-md shadow-lg shadow-black/20">
           <div className="flex items-center gap-3 md:gap-4">
             <div className="w-10 h-10 bg-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20 shrink-0">
