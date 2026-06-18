@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as SunCalc from 'suncalc';
 import { TidePrediction, WeatherCondition, TideData } from './types';
 import { format, addHours, startOfHour } from 'date-fns';
 
@@ -64,16 +65,28 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
       }
     }
     
-    // Simple moon phase approximation
-    const lunarCycle = 29.53;
-    const knownNewMoon = new Date("2024-01-11T11:57:00Z");
-    const diff = now.getTime() - knownNewMoon.getTime();
-    const daysSince = diff / (1000 * 60 * 60 * 24);
-    const currentPhase = daysSince % lunarCycle;
+    // Real-time moon phase calculation using SunCalc
+    const moonIllumination = SunCalc.getMoonIllumination(now);
+    const phaseValue = moonIllumination.phase; // 0 to 1
     
     let moonPhaseStr = "Bulan Separuh";
-    if (currentPhase < 2 || currentPhase > 27.5) moonPhaseStr = "Bulan Baru (Gelap)";
-    else if (currentPhase > 13 && currentPhase < 16.5) moonPhaseStr = "Bulan Purnama";
+    if (phaseValue >= 0.97 || phaseValue <= 0.03) {
+      moonPhaseStr = "Bulan Baru (Gelap)";
+    } else if (phaseValue > 0.03 && phaseValue < 0.22) {
+      moonPhaseStr = "Sabit Awal";
+    } else if (phaseValue >= 0.22 && phaseValue <= 0.28) {
+      moonPhaseStr = "Kuartal Pertama";
+    } else if (phaseValue > 0.28 && phaseValue < 0.47) {
+      moonPhaseStr = "Cembung Awal";
+    } else if (phaseValue >= 0.47 && phaseValue <= 0.53) {
+      moonPhaseStr = "Bulan Purnama";
+    } else if (phaseValue > 0.53 && phaseValue < 0.72) {
+      moonPhaseStr = "Cembung Akhir";
+    } else if (phaseValue >= 0.72 && phaseValue <= 0.78) {
+      moonPhaseStr = "Kuartal Terakhir";
+    } else if (phaseValue > 0.78 && phaseValue < 0.97) {
+      moonPhaseStr = "Sabit Akhir";
+    }
 
     if (marineRes.data && marineRes.data.hourly && marineRes.data.hourly.sea_level) {
       const times = marineRes.data.hourly.time;
@@ -90,7 +103,7 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
     } else {
       // Fallback: Generate sine wave tide curve for demo functionality
       const baseHeight = 1.0;
-      const tideMultiplier = 1 + 0.3 * Math.cos((currentPhase / lunarCycle) * Math.PI * 2 * 2); // Spring/neap tide modulation
+      const tideMultiplier = 1 + 0.3 * Math.cos(phaseValue * Math.PI * 2 * 2); // Spring/neap tide modulation
       const startOfDayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       for(let i=-48; i<168; i++) {
         const t = addHours(startOfDayTime, i);
@@ -150,57 +163,94 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
 
 export async function fetchRecommendation(params: {
   location: string;
-  tideData: string;
-  weatherData: string;
-  moonPhase: string;
+  tideData: TidePrediction;
+  weatherData: WeatherCondition;
+  moonPhaseStr: string;
   timeOfDay: string;
   logs?: Array<{notes: string, date: string, location: string}>;
 }) {
   let score = 40; // Base score
   let reasonParts: string[] = [];
 
-  // 1. Tide condition
-  const isRising = params.tideData.includes('Naik');
-  const isFalling = params.tideData.includes('Turun');
+  const now = new Date();
+  
+  // 1. Tide condition analysis
+  const status = params.tideData.status;
+  const isRising = status === 'Pasang Naik';
+  const isFalling = status === 'Pasang Turun';
   
   if (isRising) {
     score += 25;
-    reasonParts.push("air mulai naik membawa banyak oksigen");
+    reasonParts.push("air pasang naik membawa banyak oksigen dan pergerakan makanan alami ke perairan dangkal");
   } else if (isFalling) {
     score += 15;
-    reasonParts.push("air sedang surut");
+    reasonParts.push("arus surut membawa nutrien kembali ke perairan yang lebih dalam, ideal untuk mancing di area dasar / muara");
   } else {
-    reasonParts.push("pergerakan air stabil");
+    reasonParts.push("pergerakan arus laut stabil yang mungkin membuat ikan kurang aktif bergerak");
   }
 
-  // 2. Moon phase 
-  if (params.moonPhase.includes('Bulan Baru') || params.moonPhase.includes('Bulan Purnama')) {
-    score += 15;
-    reasonParts.push("fase bulan sangat mendukung arus pasang");
-  } else {
-    score += 5;
-    reasonParts.push("fase bulan cukup stabil");
-  }
-
-  // 3. Time of day
-  const hour = parseInt(params.timeOfDay.split(':')[0] || '12', 10);
-  if ((hour >= 5 && hour <= 9) || (hour >= 16 && hour <= 18)) {
+  // 2. Moon phase analysis using SunCalc for better logic
+  const moonPhaseVal = SunCalc.getMoonIllumination(now).phase;
+  // Moon phase: 0 (New), 0.25 (First Quarter), 0.5 (Full), 0.75 (Last Quarter)
+  if (moonPhaseVal >= 0.95 || moonPhaseVal <= 0.05) {
     score += 20;
-    reasonParts.push("waktu pagi/sore adalah periode aktif ikan mencari makan");
-  } else if (hour >= 19 || hour <= 4) {
-    score += 15;
-    reasonParts.push("waktu malam ideal untuk jenis ikan predator/udang");
+    reasonParts.push("masa bulan baru (pengaruh sentimen solunar yang kuat pada aktivitas ikan)");
+  } else if (moonPhaseVal > 0.45 && moonPhaseVal < 0.55) {
+    score += 18;
+    reasonParts.push("bulan purnama dengan gravitasi maksimal memicu jam makan ikan yang agresif");
   } else {
-    score += 0;
-    reasonParts.push("suhu siang hari mungkin membuat ikan berteduh");
+    score += 8;
+    reasonParts.push("fase bulan reguler tidak memberikan dorongan pasang surut yang signifikan");
   }
 
-  // 4. Logs bonus (up to +10)
+  // 3. Time of day analysis
+  const hour = parseInt(params.timeOfDay.split(':')[0] || '12', 10);
+  let timeStr = "";
+  if (hour >= 5 && hour < 10) timeStr = "pagi";
+  else if (hour >= 10 && hour < 15) timeStr = "siang";
+  else if (hour >= 15 && hour < 19) timeStr = "sore";
+  else timeStr = "malam";
+
+  if (timeStr === "pagi") {
+    score += 20;
+    reasonParts.push("pagi hari sangat ideal ketika suhu air mulai hangat dan fitoplankton naik");
+  } else if (timeStr === "sore") {
+    score += 20;
+    reasonParts.push("sore menjelang senja merupakan jam aktif (feeding time) bagi mayoritas ikan target");
+  } else if (timeStr === "malam") {
+    score += 15;
+    reasonParts.push("malam hari menargetkan ikan predator atau dasar (bottom fishing)");
+  } else { // Siang
+    score -= 5;
+    reasonParts.push("suhu air panas di siang bolong sering membuat ikan berlindung ke perairan yang lebih dalam dan pasif");
+  }
+
+  // 4. Weather integration
+  const temp = params.weatherData.temperature;
+  let wind = typeof params.weatherData.windSpeed === 'number' ? params.weatherData.windSpeed : parseInt(params.weatherData.windSpeed || "0", 10);
+  if (isNaN(wind)) wind = 0;
+  
+  const desc = params.weatherData.description.toLowerCase();
+
+  if (desc.includes('hujan') && !desc.includes('petir') && !desc.includes('badai')) {
+    score += 5;
+    reasonParts.push("gerimis/hujan ringan mampu menambah oksigen dan membawa sisa makanan dari darat tanpa mengganggu jarak pandang di air");
+  } else if (desc.includes('badai') || desc.includes('petir') || wind > 30) {
+    score -= 30; // Very dangerous / poor fishing
+    reasonParts.push("kondisi badai, angin kencang atau ombak tinggi sangat berbahaya dan merusak jarak pandang di dalam air");
+  } else if (temp > 32) {
+    score -= 5;
+    reasonParts.push("suhu yang cukup terik membuat oksigen terlarut menurun");
+  } else if (desc.includes('cerah')) {
+    reasonParts.push("cuaca cerah / stabil mendukung jarak pandang di dalam air");
+  }
+
+  // 5. Logs bonus (up to +10)
   if (params.logs && params.logs.length > 0) {
     const locationLogs = params.logs.filter(l => l.location === params.location);
     if (locationLogs.length > 0) {
       score += Math.min(locationLogs.length * 2, 10);
-      reasonParts.push("berdasarkan data historis tangkapan Anda sebelumnya di lokasi ini");
+      reasonParts.push("pola sejarah tangkapan menunjukkan rekam jejak keberhasilan pada spot ini");
     }
   }
 
@@ -208,41 +258,56 @@ export async function fetchRecommendation(params: {
   score = Math.max(10, Math.min(score, 100));
 
   let category = "";
-  if (score >= 90) category = "Sangat Bagus 🎣";
-  else if (score >= 75) category = "Bagus 👍";
-  else if (score >= 50) category = "Cukup ⚠️";
+  if (score >= 90) category = "Excellent 🌟";
+  else if (score >= 75) category = "Sangat Bagus 🎣";
+  else if (score >= 60) category = "Bagus 👍";
+  else if (score >= 40) category = "Cukup ⚠️";
   else category = "Kurang Ideal 🌧️";
 
   // Create simple recommendation
-  const simpleRec = `Apakah sekarang waktu yang tepat untuk memancing?\nSkor hari ini: ${score}/100 (${category})\nAlasan: ${reasonParts[0].charAt(0).toUpperCase() + reasonParts[0].slice(1)}, ${reasonParts.slice(1).join(', ')}.`;
+  const simpleRec = `Apakah sekarang waktu yang tepat untuk memancing di ${timeStr} hari ini?\nSkor: ${score}/100 (${category})\nAlasan Utama: ${reasonParts[0].charAt(0).toUpperCase() + reasonParts[0].slice(1)}, dan ${reasonParts[1]}.`;
+  
+  // Verbose recommendation
+  let rec = `===== Analisa Memancing Komprehensif: ${params.location} =====\n\n`;
+  rec += `🕒 Waktu: ${params.timeOfDay} (${timeStr.toUpperCase()})\n`;
+  rec += `🌤️ Cuaca: ${params.weatherData.description} (${temp}°C), Angin ${wind} km/h\n`;
+  rec += `🌊 Pasang Surut: ${status} pada level ${params.tideData.currentHeight.toFixed(2)}m\n`;
+  rec += `🌙 Fase Bulan: ${params.moonPhaseStr}\n`;
+  rec += `🎯 Skor Potensi Tangkapan: ${score}/100\n\n`;
 
-  // Original verbose recommendation
-  let rec = `Berdasarkan analisa untuk lokasi ${params.location}:\n\n`;
-  rec += `Saat ini kondisi cuaca terpantau ${params.weatherData} dengan fase bulan ${params.moonPhase}. `;
+  rec += `📝 **Rekomendasi Rinci:**\n`;
   
   if (isRising) {
-    rec += `Air sedang pasang naik. Ini adalah waktu yang sangat ideal karena air baru membawa banyak oksigen dan makanan ke area dangkal. Ikan-ikan predator cenderung sangat aktif berburu. `;
+    rec += `• **Kondisi Air:** Air sedang pasang naik. Ini adalah waktu emas (golden hours). Pergerakan air membawa masuk pakan alami ke wilayah dangkal dan muara. Ikan target besar biasanya aktif menyergap mangsa.\n\n`;
   } else if (isFalling) {
-    rec += `Air sedang surut turun. Ikan mulai bergerak lebih ke tengah atau ke area yang lebih dalam. Gunakan umpan di area lubuk atau sungai bagian tengah. `;
+    rec += `• **Kondisi Air:** Pada saat air surut turun, ikan bermigrasi kembali menuju ke posisi yang lebih dalam (palung/drop off). Targetkan titik-titik tersebut atau mulut muara (estuary).\n\n`;
   } else {
-    rec += `Kondisi air cenderung stabil. Aktivitas ikan mungkin sedikit menurun, namun jenis ikan dan udang tertentu masih bisa ditargetkan di area dasar laut atau sungai. `;
+    rec += `• **Kondisi Air:** Jika arus terpantau lambat atau stagnan (neap tide), ikan akan lebih cenderung diam (pasif). Disarankan menggunakan umpan hidup dan bermain teknik dasar (bottom fishing) yang sangat lambat.\n\n`;
   }
-  
+
+  if (timeStr === "pagi" || timeStr === "sore") {
+    rec += `• **Faktor Waktu:** Secara biologis, ikan sangat aktif di ${timeStr} hari. Waktu ini berpapasan dengan intensitas matahari rendah, membuat ikan berani mendekati permukaan. Teknik casting sangat disarankan.\n\n`;
+  } else if (timeStr === "malam") {
+    rec += `• **Faktor Waktu:** Malam hari bagus untuk target tertentu (seperti Kakap Merah, Kerapu, atau Cumi jika perairan terang). Jika fase bulan adalah Bulan Terang, predator visual sangat mendominasi!\n\n`;
+  } else {
+    rec += `• **Faktor Waktu:** Pada siang bolong, sinar UV panas menembus ke dalam membuat ikan berlindung di bawah struktur (karang, rumpon, bakau) atau di kedalaman. Fokuskan lemparan umpan dekat struktur dengan pelindung.\n\n`;
+  }
+
+  if (wind > 20) {
+    rec += `• **Saran Tambahan:** Angin kencang (${wind} km/h) bisa membuat riak ombak menyulitkan. Tetap berhati-hati dan pastikan Anda mencari spot terlindung dari arah angin (Leeward)!\n\n`;
+  }
+
   if (params.logs && params.logs.length > 0) {
     const locationLogs = params.logs.filter(l => l.location === params.location);
     if (locationLogs.length > 0) {
-      rec += `\n\nBerdasarkan dari ${locationLogs.length} catatan memancing Anda di ${params.location}, sistem kami melihat pola aktivitas yang serupa sesuai catatan terdahulu. Pertahankan teknik umpan yang berhasil sebelumnya!`;
-    } else {
-      rec += `\n\nSistem kami mempelajari dari total ${params.logs.length} catatan memancing Anda secara global, meskipun belum ada riwayat spesifik di lokasi ini. Cobalah menguji pola yang biasanya berhasil bagi Anda!`;
+      rec += `• **Insight Jurnal:** Berdasarkan ${locationLogs.length} trip Anda sebelumnya di spot ini, kondisi yang ada memvalidasi keberhasilan historis Anda.`;
     }
   }
-  
-  rec += `\n\nRekomendasi Waktu: Pagi atau sore hari umumnya selalu lebih baik, dipadukan dengan pergerakan air saat ini akan memaksimalkan peluang Anda. Semangat memancing!`;
-  
+
   return {
     score,
     category,
-    reason: reasonParts.join(', '),
+    reason: reasonParts.join('; '),
     simpleRec,
     verboseRec: rec
   };

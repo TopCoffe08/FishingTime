@@ -3,6 +3,7 @@ import { fetchTideAndWeather, fetchRecommendation } from './api';
 import { PRESET_LOCATIONS, SPECIES_DB } from './data';
 import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord } from './types';
 import { TideChart } from './components/TideChart';
+import { LocationMap } from './components/LocationMap';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X } from 'lucide-react';
@@ -17,6 +18,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log'>('dashboard');
+  const [isAnalisaExpanded, setIsAnalisaExpanded] = useState(false);
 
   const [logs, setLogs] = useState<CatchRecord[]>(() => {
     const saved = localStorage.getItem('fishing_logs');
@@ -32,6 +34,20 @@ export default function App() {
   const [searchLog, setSearchLog] = useState('');
   const [now, setNow] = useState(new Date());
   const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('fishing_logs', JSON.stringify(logs));
@@ -53,9 +69,9 @@ export default function App() {
 
         const rec = await fetchRecommendation({
           location: location.name,
-          tideData: `${tide.status} (${tide.currentHeight}m)`,
-          weatherData: `${weather.description}, ${weather.temperature}°C`,
-          moonPhase: moonPhaseStr,
+          tideData: tide,
+          weatherData: weather,
+          moonPhaseStr: moonPhaseStr,
           timeOfDay: format(new Date(), 'HH:mm'),
           logs: logs
         });
@@ -91,6 +107,12 @@ export default function App() {
               <p className="text-sm font-bold text-white">{location.name}</p>
               <p className="text-xs text-slate-400">{location.type}</p>
             </div>
+            {!isOnline && (
+              <div className="bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-500/50 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                <span className="text-[10px] md:text-xs font-black tracking-tight text-amber-400 uppercase">Offline Mode</span>
+              </div>
+            )}
             {weather && (
               <div className="bg-slate-900/80 p-2 px-3 sm:px-4 rounded-2xl border border-slate-700 flex items-center gap-2 sm:gap-3 shrink-0">
                 <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -124,7 +146,7 @@ export default function App() {
               className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-colors ${activeTab === 'log' ? 'text-teal-400 md:bg-white md:text-slate-900 md:shadow-lg md:shadow-white/10' : 'text-slate-400 hover:text-white'}`}
             >
               <BookOpen size={24} className="md:hidden" />
-              <span>Catatan</span>
+              <span>Jurnal Tangkapan</span>
             </button>
           </div>
         </nav>
@@ -232,9 +254,25 @@ export default function App() {
                         <div className="inline-block bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-4 border border-white/20 shadow-inner">
                           <span className="text-sm font-bold text-white">{scoreRec.category}</span>
                         </div>
-                        <p className="text-xs sm:text-[13px] font-medium leading-relaxed text-teal-50 bg-black/10 p-3.5 rounded-2xl text-left border border-black/5">
-                          <strong className="text-white block mb-1 text-xs">🔍 Analisa:</strong> {scoreRec.reason.charAt(0).toUpperCase() + scoreRec.reason.slice(1)}.
-                        </p>
+                        <div className="text-xs sm:text-[13px] font-medium leading-relaxed text-teal-50 bg-black/10 p-4 rounded-2xl text-left border border-black/5 flex flex-col gap-2 transition-all">
+                          <div>
+                            <strong className="text-white block mb-1.5 text-xs uppercase tracking-widest">🔍 Analisa Singkat</strong>
+                            <span className="text-teal-100">{scoreRec.reason.charAt(0).toUpperCase() + scoreRec.reason.slice(1)}.</span>
+                          </div>
+                          
+                          {isAnalisaExpanded && (
+                            <div className="mt-3 pt-3 border-t border-white/10 text-teal-100/90 text-[11px] sm:text-xs">
+                               <div className="whitespace-pre-wrap">{scoreRec.verboseRec}</div>
+                            </div>
+                          )}
+                          
+                          <button 
+                            onClick={() => setIsAnalisaExpanded(!isAnalisaExpanded)}
+                            className="text-white/70 hover:text-white font-bold text-[10px] sm:text-xs uppercase tracking-widest self-center mt-2 flex items-center gap-1 transition-colors"
+                          >
+                            {isAnalisaExpanded ? 'Tutup Analisa' : 'Baca Analisa Penuh'}
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="relative z-10 w-full mb-2">
@@ -245,10 +283,28 @@ export default function App() {
                     )}
                   </div>
 
+                  <div className="hidden md:block bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700">
+                    <div className="flex justify-between items-center mb-4 md:mb-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-teal-400"><MapPin size={20} /></span>
+                        <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Peta Interaktif</h3>
+                      </div>
+                    </div>
+                    <div className="h-[250px] md:h-[300px] w-full relative z-0">
+                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} />
+                    </div>
+                  </div>
+
                   <div className="bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700">
-                    <div className="flex items-center gap-2 mb-4 md:mb-6">
-                      <span className="text-teal-400"><Fish size={20} /></span>
-                      <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Quick Stats</h3>
+                    <div className="flex justify-between items-center mb-4 md:mb-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-teal-400"><Fish size={20} /></span>
+                        <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Quick Stats</h3>
+                      </div>
+                      <div className="text-[9px] md:text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 flex items-center gap-2">
+                         <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></div>
+                         Live Data (OpenMeteo)
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 sm:gap-4">
                       <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
@@ -301,6 +357,9 @@ export default function App() {
                  <>
                   {/* Tide Chart block styled exactly like the center column in HTML */}
                   <div className="bg-slate-800/30 rounded-[2.5rem] border border-slate-700/50 p-5 md:p-6 flex flex-col flex-1 min-h-[350px] md:min-h-[400px] w-full max-w-[100vw] overflow-hidden">
+                    <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+                       <Droplets className="text-teal-400" size={16} /> Grafik Pasang Surut
+                    </h3>
                     <div className="flex justify-between items-start mb-6">
                       <div>
                         <h2 className="text-3xl sm:text-4xl font-black tracking-tighter">{tide.currentHeight.toFixed(2)}<span className="text-lg text-slate-500 ml-1 font-normal">meters</span></h2>
@@ -352,6 +411,19 @@ export default function App() {
                     </div>
                   </div>
                   
+                  {/* Mobile Interactive Map */}
+                  <div className="md:hidden bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700 mb-6">
+                    <div className="flex justify-between items-center mb-4 md:mb-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-teal-400"><MapPin size={20} /></span>
+                        <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Peta Interaktif</h3>
+                      </div>
+                    </div>
+                    <div className="h-[250px] md:h-[300px] w-full relative z-0">
+                      <LocationMap lat={location.lat} lon={location.lon} name={location.name} />
+                    </div>
+                  </div>
+
                   {/* Quick visual stats beneath chart if needed */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                      <div className="bg-slate-800/40 p-4 md:p-5 rounded-[2rem] border border-slate-700/50 flex flex-col items-center justify-center">
@@ -439,8 +511,8 @@ export default function App() {
                 <div className="w-24 h-24 bg-slate-800 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl border border-slate-700 transform rotate-3">
                   <BookOpen className="text-teal-500 opacity-80" size={48} />
                 </div>
-                <h2 className="text-xl font-black text-white mb-3">Buku Catatan Tangkapan</h2>
-                <p className="text-slate-400 mb-8 max-w-sm mx-auto text-sm leading-relaxed font-medium">Catat hasil tangkapan Anda untuk membantu sistem mempelajari pola perairan di lokasi favorit Anda.</p>
+                <h2 className="text-xl font-black text-white mb-3">Jurnal Tangkapan (Catatan Personal)</h2>
+                <p className="text-slate-400 mb-8 max-w-sm mx-auto text-sm leading-relaxed font-medium">Catat spesies ikan, berat, umpan yang dipakai, cuaca riil saat ini, dan dokumentasi foto untuk setiap trip memancing.</p>
                 <button 
                   onClick={() => setIsAddingLog(true)}
                   className="bg-teal-500 hover:bg-teal-400 text-slate-900 font-black py-4 px-8 rounded-3xl shadow-xl shadow-teal-500/20 uppercase tracking-[0.2em] text-xs transition-colors flex items-center gap-2">
@@ -452,7 +524,7 @@ export default function App() {
             {!isAddingLog && logs.length > 0 && (
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-3">
-                  <h2 className="text-lg font-black text-white px-2">Catatan Memancing Saya</h2>
+                  <h2 className="text-lg font-black text-white px-2">Jurnal Tangkapan Saya</h2>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <input 
                       type="text" 
