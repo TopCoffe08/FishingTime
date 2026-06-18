@@ -11,12 +11,19 @@ export interface TideData {
   type?: 'High' | 'Low';
 }
 
+export interface DailySolarData {
+  date: string;
+  sunrise: Date;
+  sunset: Date;
+}
+
 export interface TidePrediction {
   currentHeight: number;
   status: 'Pasang Naik' | 'Pasang Turun' | 'Surut' | 'Pasang Puncak';
   nextHighTide: Date | null;
   nextLowTide: Date | null;
   hourlyData: TideData[];
+  dailySolar?: DailySolarData[];
 }
 
 export interface WeatherCondition {

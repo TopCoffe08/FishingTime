@@ -21,11 +21,11 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
   // Fetch Weather and marine data from Open-Meteo
   // Marine API expects slightly different lat/lon sometimes but usually works near coast.
   const now = new Date();
-  const startDate = format(now, 'yyyy-MM-dd');
-  const endDate = format(addHours(now, 48), 'yyyy-MM-dd'); // Next 2 days for prediction
+  const startDate = format(addHours(now, -48), 'yyyy-MM-dd'); // 2 days ago
+  const endDate = format(addHours(now, 24 * 7), 'yyyy-MM-dd'); // Next 7 days for prediction
 
   // Weather Request
-  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=sunrise,sunset&timezone=auto`;
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=sunrise,sunset&timezone=auto&start_date=${startDate}&end_date=${endDate}`;
   
   // Marine/Tide Request (Note: open-meteo marine api covers global oceans, might not be perfectly accurate for inland rivers, but good enough for demo)
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=sea_level&timezone=auto&start_date=${startDate}&end_date=${endDate}`;
@@ -52,6 +52,17 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
 
     let hourlyData: TideData[] = [];
     let currentHeight = 0;
+    let dailySolar: any[] = [];
+    
+    if (weatherRes.data && weatherRes.data.daily && weatherRes.data.daily.sunrise) {
+      for(let i=0; i<weatherRes.data.daily.time.length; i++) {
+        dailySolar.push({
+          date: weatherRes.data.daily.time[i],
+          sunrise: new Date(weatherRes.data.daily.sunrise[i]),
+          sunset: new Date(weatherRes.data.daily.sunset[i])
+        });
+      }
+    }
     
     if (marineRes.data && marineRes.data.hourly && marineRes.data.hourly.sea_level) {
       const times = marineRes.data.hourly.time;
@@ -68,8 +79,9 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
     } else {
       // Fallback: Generate sine wave tide curve for demo functionality
       const baseHeight = 1.0;
-      for(let i=0; i<48; i++) {
-        const t = addHours(startOfHour(now), i);
+      const startOfDayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      for(let i=-48; i<168; i++) {
+        const t = addHours(startOfDayTime, i);
         // Simple 12-hour tide cycle
         const h = baseHeight + Math.sin((t.getTime() / (1000 * 60 * 60)) * (Math.PI / 6)) * 1.5;
         hourlyData.push({ time: t, height: Number(h.toFixed(2)) });
@@ -122,7 +134,8 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
         status: status! || 'Pasang Naik',
         nextHighTide,
         nextLowTide,
-        hourlyData
+        hourlyData,
+        dailySolar
       },
       weather: weatherCond,
       moonPhaseStr

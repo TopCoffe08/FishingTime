@@ -3,7 +3,7 @@ import { fetchTideAndWeather, fetchAIRecommendation } from './api';
 import { PRESET_LOCATIONS, SPECIES_DB } from './data';
 import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord } from './types';
 import { TideChart } from './components/TideChart';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -27,6 +27,7 @@ export default function App() {
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
   const [searchLog, setSearchLog] = useState('');
   const [now, setNow] = useState(new Date());
+  const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
 
   useEffect(() => {
     localStorage.setItem('fishing_logs', JSON.stringify(logs));
@@ -320,8 +321,30 @@ export default function App() {
                       </div>
                     </div>
 
+                    <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide mb-4 w-full">
+                      {[
+                        { label: 'Kemarin', offset: -1 },
+                        { label: 'Hari Ini', offset: 0 },
+                        { label: 'Besok', offset: 1 },
+                        { label: 'Lusa', offset: 2 }
+                      ].map(item => (
+                        <button
+                          key={item.offset}
+                          onClick={() => setSelectedDateOffset(item.offset)}
+                          className={`whitespace-nowrap px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 ${selectedDateOffset === item.offset ? 'bg-teal-500 text-slate-900 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'}`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+
                     <div className="flex-1 w-full relative">
-                      <TideChart data={tide.hourlyData} currentTime={now} />
+                      <TideChart 
+                        data={tide.hourlyData} 
+                        displayedDate={addDays(now, selectedDateOffset)} 
+                        currentTime={now} 
+                        dailySolar={tide.dailySolar} 
+                      />
                     </div>
                   </div>
                   
