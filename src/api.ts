@@ -147,7 +147,7 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
   }
 }
 
-export async function fetchAIRecommendation(params: {
+export async function fetchRecommendation(params: {
   location: string;
   tideData: string;
   weatherData: string;
@@ -230,9 +230,9 @@ export async function fetchAIRecommendation(params: {
   if (params.logs && params.logs.length > 0) {
     const locationLogs = params.logs.filter(l => l.location === params.location);
     if (locationLogs.length > 0) {
-      rec += `\n\nBerdasarkan dari ${locationLogs.length} catatan memancing Anda di ${params.location}, sistem intelijen kami melihat pola aktivitas yang serupa sesuai catatan terdahulu. Pertahankan teknik umpan yang berhasil sebelumnya!`;
+      rec += `\n\nBerdasarkan dari ${locationLogs.length} catatan memancing Anda di ${params.location}, sistem kami melihat pola aktivitas yang serupa sesuai catatan terdahulu. Pertahankan teknik umpan yang berhasil sebelumnya!`;
     } else {
-      rec += `\n\nSistem AI kami mempelajari dari total ${params.logs.length} catatan memancing Anda secara global, meskipun belum ada riwayat spesifik di lokasi ini. Cobalah menguji pola yang biasanya berhasil bagi Anda!`;
+      rec += `\n\nSistem kami mempelajari dari total ${params.logs.length} catatan memancing Anda secara global, meskipun belum ada riwayat spesifik di lokasi ini. Cobalah menguji pola yang biasanya berhasil bagi Anda!`;
     }
   }
   

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgFade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0d9488" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bgFade)" rx="112" />
+
+  <!-- Moon/Sun -->
+  <circle cx="360" cy="160" r="54" fill="#fde047" opacity="0.9" />
+
+  <!-- Fish -->
+  <path d="M 120 300 C 180 180, 280 140, 360 220 C 280 300, 160 340, 120 300 Z" fill="#38bdf8" />
+  <path d="M 120 300 L 60 270 L 70 340 Z" fill="#0ea5e9" />
+  
+  <!-- Fish Eye -->
+  <circle cx="310" cy="220" r="8" fill="#0f172a" />
+
+  <!-- Waves -->
+  <path d="M 0 350 Q 128 290 256 350 T 512 350 L 512 512 L 0 512 Z" fill="url(#waveGrad)" />
+  <path d="M 0 390 Q 128 330 256 390 T 512 390 L 512 512 L 0 512 Z" fill="#0f172a" opacity="0.4" />
+  <path d="M 0 430 Q 128 370 256 430 T 512 430 L 512 512 L 0 512 Z" fill="#14b8a6" opacity="0.8" />
+  <path d="M 0 470 Q 128 410 256 470 T 512 470 L 512 512 L 0 512 Z" fill="#0d9488" />
+</svg>

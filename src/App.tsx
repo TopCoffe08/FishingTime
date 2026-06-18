@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchTideAndWeather, fetchAIRecommendation } from './api';
+import { fetchTideAndWeather, fetchRecommendation } from './api';
 import { PRESET_LOCATIONS, SPECIES_DB } from './data';
 import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord } from './types';
 import { TideChart } from './components/TideChart';
@@ -13,7 +13,7 @@ export default function App() {
   const [tide, setTide] = useState<TidePrediction | null>(null);
   const [weather, setWeather] = useState<WeatherCondition | null>(null);
   const [moonPhase, setMoonPhase] = useState<string>('');
-  const [aiRec, setAiRec] = useState<{score: number, category: string, reason: string, simpleRec: string, verboseRec: string} | null>(null);
+  const [scoreRec, setScoreRec] = useState<{score: number, category: string, reason: string, simpleRec: string, verboseRec: string} | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log'>('dashboard');
@@ -47,7 +47,7 @@ export default function App() {
         setWeather(weather);
         setMoonPhase(moonPhaseStr);
 
-        const rec = await fetchAIRecommendation({
+        const rec = await fetchRecommendation({
           location: location.name,
           tideData: `${tide.status} (${tide.currentHeight}m)`,
           weatherData: `${weather.description}, ${weather.temperature}°C`,
@@ -55,7 +55,7 @@ export default function App() {
           timeOfDay: format(new Date(), 'HH:mm'),
           logs: logs
         });
-        setAiRec(rec);
+        setScoreRec(rec);
 
       } catch (err) {
         console.error(err);
@@ -217,19 +217,19 @@ export default function App() {
                   <div className="bg-gradient-to-br from-teal-600 to-emerald-600 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-center items-center text-center">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-4 text-teal-100 flex items-center gap-2">
-                       <CheckCircle2 size={16} /> Skor Memancing AI
+                       <CheckCircle2 size={16} /> Skor Memancing
                     </h3>
-                    {aiRec ? (
+                    {scoreRec ? (
                       <div className="relative z-10 w-full">
                         <div className="flex items-end justify-center gap-1 mb-2">
-                          <span className="text-5xl sm:text-6xl font-black text-white tracking-tighter">{aiRec.score}</span>
+                          <span className="text-5xl sm:text-6xl font-black text-white tracking-tighter">{scoreRec.score}</span>
                           <span className="text-lg font-bold text-teal-200 mb-2">/100</span>
                         </div>
                         <div className="inline-block bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-4 border border-white/20 shadow-inner">
-                          <span className="text-sm font-bold text-white">{aiRec.category}</span>
+                          <span className="text-sm font-bold text-white">{scoreRec.category}</span>
                         </div>
                         <p className="text-xs sm:text-[13px] font-medium leading-relaxed text-teal-50 bg-black/10 p-3.5 rounded-2xl text-left border border-black/5">
-                          <strong className="text-white block mb-1 text-xs">🔍 Analisa:</strong> {aiRec.reason.charAt(0).toUpperCase() + aiRec.reason.slice(1)}.
+                          <strong className="text-white block mb-1 text-xs">🔍 Analisa:</strong> {scoreRec.reason.charAt(0).toUpperCase() + scoreRec.reason.slice(1)}.
                         </p>
                       </div>
                     ) : (
@@ -436,7 +436,7 @@ export default function App() {
                   <BookOpen className="text-teal-500 opacity-80" size={48} />
                 </div>
                 <h2 className="text-xl font-black text-white mb-3">Buku Catatan Tangkapan</h2>
-                <p className="text-slate-400 mb-8 max-w-sm mx-auto text-sm leading-relaxed font-medium">Catat hasil tangkapan Anda untuk membantu AI mempelajari pola perairan di lokasi favorit Anda.</p>
+                <p className="text-slate-400 mb-8 max-w-sm mx-auto text-sm leading-relaxed font-medium">Catat hasil tangkapan Anda untuk membantu sistem mempelajari pola perairan di lokasi favorit Anda.</p>
                 <button 
                   onClick={() => setIsAddingLog(true)}
                   className="bg-teal-500 hover:bg-teal-400 text-slate-900 font-black py-4 px-8 rounded-3xl shadow-xl shadow-teal-500/20 uppercase tracking-[0.2em] text-xs transition-colors flex items-center gap-2">
