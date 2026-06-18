@@ -18,13 +18,17 @@ export default function App() {
   const [isLocating, setIsLocating] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log'>('dashboard');
 
-  const [logs, setLogs] = useState<Array<{id: string, notes: string, date: string, location: string, photoUrl?: string}>>(() => {
+  const [logs, setLogs] = useState<CatchRecord[]>(() => {
     const saved = localStorage.getItem('fishing_logs');
     return saved ? JSON.parse(saved) : [];
   });
   const [isAddingLog, setIsAddingLog] = useState(false);
   const [newLogNotes, setNewLogNotes] = useState('');
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [newSpecies, setNewSpecies] = useState('');
+  const [newWeight, setNewWeight] = useState('');
+  const [newLength, setNewLength] = useState('');
+  const [newBait, setNewBait] = useState('');
   const [searchLog, setSearchLog] = useState('');
   const [now, setNow] = useState(new Date());
   const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
@@ -97,9 +101,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className="w-full max-w-5xl mx-auto p-4 md:px-6 space-y-6 flex-1 pb-32 md:pb-6">
+      <main className="w-full max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 flex-1 pb-32 md:pb-8">
         {/* Tab Navigation - Bottom on Mobile, Top on Desktop */}
-        <nav className="fixed bottom-0 left-0 right-0 md:static bg-slate-900/95 md:bg-transparent backdrop-blur-xl border-t border-slate-700 md:border-none z-50 p-3 md:p-0 md:mb-6 md:flex md:justify-center">
+        <nav className="fixed bottom-0 left-0 right-0 md:static bg-slate-900/95 md:bg-transparent backdrop-blur-xl border-t border-slate-700 md:border-none z-50 p-3 md:p-0 md:mb-8 md:flex md:justify-center">
           <div className="md:bg-slate-800/80 md:backdrop-blur-xl md:border md:border-white/10 md:p-2 md:rounded-[2.5rem] flex items-center justify-around md:gap-2">
             <button 
               onClick={() => setActiveTab('dashboard')}
@@ -195,14 +199,14 @@ export default function App() {
                       }
                     }}
                     disabled={isLocating}
-                    className={`flex items-center justify-center h-12 md:h-14 gap-2 bg-slate-700/50 text-teal-400 font-bold text-xs md:text-sm px-4 md:px-6 rounded-2xl border border-slate-600/50 transition-colors shrink-0 ${isLocating ? 'opacity-50 cursor-wait' : 'hover:bg-slate-700'}`}
+                    style={{ width: '65.797px' }}
+                    className={`mx-auto md:mx-0 flex items-center justify-center h-12 md:h-14 bg-slate-700/50 text-teal-400 rounded-2xl border border-slate-600/50 transition-colors shrink-0 ${isLocating ? 'opacity-50 cursor-wait' : 'hover:bg-slate-700'}`}
                   >
                     {isLocating ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-500"></div>
                     ) : (
-                      <MapPin size={16} />
+                      <MapPin size={20} />
                     )}
-                    <span className="uppercase tracking-wider">{isLocating ? 'Mencari...' : 'GPS Saya'}</span>
                   </button>
                 </div>
               </div>
@@ -241,46 +245,46 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className="bg-slate-800/50 p-5 rounded-[2rem] border border-slate-700">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-teal-400"><Fish size={18} /></span>
-                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-300">Quick Stats</h3>
+                  <div className="bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700">
+                    <div className="flex items-center gap-2 mb-4 md:mb-6">
+                      <span className="text-teal-400"><Fish size={20} /></span>
+                      <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Quick Stats</h3>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-900/40 p-3 rounded-2xl border border-slate-700 flex items-center gap-3">
-                         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-800 flex items-center justify-center bg-amber-500/10">
-                           <Moon className="text-amber-400" size={16} />
+                    <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
+                         <div className="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center bg-amber-500/10">
+                           <Moon className="text-amber-400" size={18} />
                          </div>
                          <div className="min-w-0">
-                           <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase truncate">Fase Bulan</p>
-                           <p className="text-xs font-bold text-slate-200 mt-0.5 truncate">{moonPhase}</p>
+                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Fase Bulan</p>
+                           <p className="text-sm border-0 font-bold text-slate-200 mt-0.5 truncate">{moonPhase}</p>
                          </div>
                       </div>
-                      <div className="bg-slate-900/40 p-3 rounded-2xl border border-slate-700 flex items-center gap-3">
-                         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-800 flex items-center justify-center bg-blue-500/10">
-                           <Droplets className="text-blue-400" size={16} />
+                      <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
+                         <div className="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center bg-blue-500/10">
+                           <Droplets className="text-blue-400" size={18} />
                          </div>
                          <div className="min-w-0">
-                           <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase truncate">Cuaca</p>
-                           <p className="text-xs font-bold text-slate-200 mt-0.5 truncate">{weather.description}</p>
+                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Cuaca</p>
+                           <p className="text-sm font-bold text-slate-200 mt-0.5 truncate">{weather.description}</p>
                          </div>
                       </div>
-                      <div className="bg-slate-900/40 p-3 rounded-2xl border border-slate-700 flex items-center gap-3">
-                         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-800 flex items-center justify-center bg-orange-500/10">
-                           <Thermometer className="text-orange-400" size={16} />
+                      <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
+                         <div className="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center bg-orange-500/10">
+                           <Thermometer className="text-orange-400" size={18} />
                          </div>
                          <div className="min-w-0">
-                           <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase truncate">Suhu Cuaca</p>
-                           <p className="text-xs font-bold text-slate-200 mt-0.5 truncate">{weather.temperature}°C</p>
+                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Suhu Cuaca</p>
+                           <p className="text-sm font-bold text-slate-200 mt-0.5 truncate">{weather.temperature}°C</p>
                          </div>
                       </div>
-                      <div className="bg-slate-900/40 p-3 rounded-2xl border border-slate-700 flex items-center gap-3">
-                         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-800 flex items-center justify-center bg-teal-500/10">
-                           <Wind className="text-teal-400" size={16} />
+                      <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
+                         <div className="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center bg-teal-500/10">
+                           <Wind className="text-teal-400" size={18} />
                          </div>
                          <div className="min-w-0">
-                           <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase truncate">Kecepatan Angin</p>
-                           <p className="text-xs font-bold text-slate-200 mt-0.5 truncate">{weather.windSpeed} km/h</p>
+                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Kecepatan Angin</p>
+                           <p className="text-sm font-bold text-slate-200 mt-0.5 truncate">{weather.windSpeed} km/h</p>
                          </div>
                       </div>
                     </div>
@@ -349,18 +353,18 @@ export default function App() {
                   </div>
                   
                   {/* Quick visual stats beneath chart if needed */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                     <div className="bg-slate-800/40 p-4 rounded-3xl border border-slate-700/50 flex flex-col items-center justify-center">
-                        <p className="text-[10px] text-slate-500 font-black mb-1 tracking-widest">WAKTU</p>
-                        <p className="text-sm font-bold text-slate-200">{format(now, 'HH:mm')}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                     <div className="bg-slate-800/40 p-4 md:p-5 rounded-[2rem] border border-slate-700/50 flex flex-col items-center justify-center">
+                        <p className="text-[10px] md:text-xs text-slate-500 font-black mb-1 md:mb-2 tracking-widest">WAKTU</p>
+                        <p className="text-sm md:text-base font-bold text-slate-200">{format(now, 'HH:mm')}</p>
                      </div>
-                     <div className="bg-slate-800/40 p-4 rounded-3xl border border-slate-700/50 flex flex-col items-center justify-center">
-                        <p className="text-[10px] text-slate-500 font-black mb-1 tracking-widest">KONDISI</p>
-                        <p className="text-sm font-bold text-amber-400 uppercase">{weather?.description || 'Stabil'}</p>
+                     <div className="bg-slate-800/40 p-4 md:p-5 rounded-[2rem] border border-slate-700/50 flex flex-col items-center justify-center">
+                        <p className="text-[10px] md:text-xs text-slate-500 font-black mb-1 md:mb-2 tracking-widest">KONDISI</p>
+                        <p className="text-sm md:text-base font-bold text-amber-400 uppercase">{weather?.description || 'Stabil'}</p>
                      </div>
-                     <div className="bg-slate-800/40 p-4 rounded-3xl border border-slate-700/50 flex flex-col items-center justify-center md:col-span-2 hidden md:flex">
-                        <button className="w-full h-full text-xs font-black text-teal-400 uppercase tracking-widest hover:text-teal-300 transition-colors flex items-center justify-center gap-2">
-                          <Clock size={16} /> Update Real-Time
+                     <div className="bg-slate-800/40 p-4 md:p-5 rounded-[2rem] border border-slate-700/50 flex flex-col items-center justify-center md:col-span-2 hidden md:flex">
+                        <button className="w-full h-full text-xs md:text-sm font-black text-teal-400 uppercase tracking-widest hover:text-teal-300 transition-colors flex items-center justify-center gap-2">
+                          <Clock size={18} /> Update Real-Time
                         </button>
                      </div>
                   </div>
@@ -492,6 +496,23 @@ export default function App() {
                       <span className="flex items-center gap-2 text-slate-300">
                         <MapPin size={14} className="text-emerald-400" /> {log.location}
                       </span>
+                      {(log.weatherCondition || log.tideCondition) && (
+                        <span className="flex items-center gap-2 text-slate-400 text-xs">
+                          <Droplets size={12} className="text-blue-400" /> {log.weatherCondition || '-'} • {log.tideCondition || '-'}
+                        </span>
+                      )}
+                      {(log.species || log.weight || log.length) && (
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          {log.species && <span className="bg-teal-500/20 text-teal-300 text-[10px] font-bold px-2 py-1 rounded-[6px] uppercase tracking-wider">{log.species}</span>}
+                          {log.weight && <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-1 rounded-[6px]">{log.weight} kg</span>}
+                          {log.length && <span className="bg-blue-500/20 text-blue-300 text-[10px] font-bold px-2 py-1 rounded-[6px]">{log.length} cm</span>}
+                        </div>
+                      )}
+                      {log.bait && (
+                        <span className="flex items-center gap-2 text-amber-400/80 mt-1 text-xs font-bold">
+                          🎯 Umpan: <span className="text-amber-400">{log.bait}</span>
+                        </span>
+                      )}
                     </div>
                     <p className="font-medium text-slate-200 mt-3 whitespace-pre-wrap">{log.notes}</p>
                   </div>
@@ -513,28 +534,95 @@ export default function App() {
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Detail Tangkapan (Umpan, Cuaca, Jenis Ikan)</label>
-                    <textarea 
-                      value={newLogNotes}
-                      onChange={(e) => setNewLogNotes(e.target.value)}
-                      placeholder="Contoh: Tangkapan lumayan hari ini. Cuaca mendung dan air sedang pasang naik. Berhasil menarik Kakap Putih menggunakan umpan udang hidup."
-                      className="w-full h-32 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-2xl focus:ring-teal-500 focus:border-teal-500 block p-4 placeholder-slate-600 resize-none outline-none"
-                    ></textarea>
-                  </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="col-span-2 lg:col-span-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Spesies Ikan</label>
+                        <input 
+                          type="text"
+                          value={newSpecies}
+                          onChange={(e) => setNewSpecies(e.target.value)}
+                          placeholder="Jumbo Kakap, Patin..."
+                          className="w-full h-12 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-600 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Berat (kg)</label>
+                        <input 
+                          type="number"
+                          step="0.1"
+                          value={newWeight}
+                          onChange={(e) => setNewWeight(e.target.value)}
+                          placeholder="0.0"
+                          className="w-full h-12 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-600 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Panjang (cm)</label>
+                        <input 
+                          type="number"
+                          step="1"
+                          value={newLength}
+                          onChange={(e) => setNewLength(e.target.value)}
+                          placeholder="0"
+                          className="w-full h-12 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-600 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Umpan Yang Digunakan</label>
+                      <input 
+                        type="text"
+                        value={newBait}
+                        onChange={(e) => setNewBait(e.target.value)}
+                        placeholder="Udang Hidup, Cacing Merah..."
+                        className="w-full h-12 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-600 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block flex items-center justify-between">
+                        <span>Laporan/Catatan Tambahan</span>
+                      </label>
+                      <textarea 
+                        value={newLogNotes}
+                        onChange={(e) => setNewLogNotes(e.target.value)}
+                        placeholder="Tangkapan lumayan hari ini..."
+                        className="w-full h-24 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-2xl focus:ring-teal-500 focus:border-teal-500 block p-4 placeholder-slate-600 resize-none outline-none"
+                      ></textarea>
+                    </div>
                   
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block flex items-center justify-between">
-                      <span>Lampirkan Foto/Gambar</span>
-                      <span className="text-[8px] sm:text-[10px] opacity-75 font-normal normal-case">(Opsional) Masukkan URL foto</span>
+                      <span>Lampirkan Foto Hasil</span>
+                      <span className="text-[8px] sm:text-[10px] opacity-75 font-normal normal-case">(Opsional) Pilih gambar</span>
                     </label>
                     <input 
-                      type="url"
-                      value={newPhotoUrl}
-                      onChange={(e) => setNewPhotoUrl(e.target.value)}
-                      placeholder="https://contoh.com/foto-ikan.jpg"
-                      className="w-full h-12 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-600 outline-none"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setNewPhotoUrl(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="block w-full text-sm text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-[12px] file:border-0 file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-slate-700 file:text-teal-400 hover:file:bg-slate-600 file:transition-colors bg-slate-900/50 p-1.5 rounded-xl border border-slate-700/50"
                     />
+                    {newPhotoUrl && (
+                      <div className="mt-4 rounded-xl border border-teal-500/30 overflow-hidden relative group max-w-sm">
+                        <img src={newPhotoUrl} className="w-full object-cover" />
+                        <button 
+                          onClick={() => setNewPhotoUrl('')}
+                          className="absolute top-2 right-2 bg-slate-900/80 p-1 rounded-full text-red-500 hover:text-red-400"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex gap-3 mt-4">
@@ -543,6 +631,10 @@ export default function App() {
                         setIsAddingLog(false);
                         setNewLogNotes('');
                         setNewPhotoUrl('');
+                        setNewSpecies('');
+                        setNewWeight('');
+                        setNewLength('');
+                        setNewBait('');
                       }}
                       className="flex-1 bg-slate-700/50 hover:bg-slate-700 text-white font-bold py-3.5 rounded-2xl border border-slate-600/50 transition-colors text-xs uppercase tracking-wider"
                     >
@@ -557,12 +649,22 @@ export default function App() {
                           date: format(new Date(), 'dd MMM yyyy, HH:mm', { locale: idLocale }),
                           location: location.name,
                           notes: newLogNotes,
-                          photoUrl: newPhotoUrl.trim() || undefined
+                          photoUrl: newPhotoUrl.trim() || undefined,
+                          species: newSpecies.trim() || undefined,
+                          weight: parseFloat(newWeight) || undefined,
+                          length: parseFloat(newLength) || undefined,
+                          bait: newBait.trim() || undefined,
+                          weatherCondition: weather ? `${weather.description}, ${weather.temperature}°C` : undefined,
+                          tideCondition: tide ? tide.status : undefined
                         };
                         
                         setLogs([...logs, newLog]);
                         setNewLogNotes('');
                         setNewPhotoUrl('');
+                        setNewSpecies('');
+                        setNewWeight('');
+                        setNewLength('');
+                        setNewBait('');
                         setIsAddingLog(false);
                       }}
                       disabled={!newLogNotes.trim()}

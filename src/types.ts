@@ -46,11 +46,14 @@ export interface FishSpecies {
 
 export interface CatchRecord {
   id: string;
-  date: Date;
-  locationName: string;
-  weather: string;
-  tideCondition: string;
-  bait: string;
-  species: string;
-  weight: number; // in kg
+  notes: string;
+  date: string;
+  location: string;
+  photoUrl?: string;
+  species?: string;
+  weight?: number;
+  length?: number;
+  bait?: string;
+  weatherCondition?: string;
+  tideCondition?: string;
 }
