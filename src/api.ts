@@ -97,6 +97,43 @@ function generateFallbackSineWave(moonPhase: number, baseTime: Date): TideData[]
   return results;
 }
 
+export async function fetchBMKGWeather(lat: number, lon: number): Promise<WeatherCondition | null> {
+  try {
+    const url = `${CORS_PROXY}${encodeURIComponent(`https://api-apps.bmkg.go.id/api/cuaca?lon=${lon}&lat=${lat}`)}`;
+    const res = await axios.get(url, { timeout: 10000 });
+    
+    if (res.data && res.data.data && res.data.data.length > 0 && res.data.data[0].cuaca) {
+      const cuacaList = res.data.data[0].cuaca.flat();
+      if (cuacaList.length > 0) {
+        // Find closest to current time
+        const nowMs = Date.now();
+        let closest = cuacaList[0];
+        let minDiff = Infinity;
+        for (const item of cuacaList) {
+           const diff = Math.abs(new Date(item.utc_datetime).getTime() - nowMs);
+           if (diff < minDiff) {
+             minDiff = diff;
+             closest = item;
+           }
+        }
+        
+        return {
+          temperature: closest.t,
+          weatherCode: parseInt(closest.weather) || 1,
+          windSpeed: closest.ws,
+          windDirectionDeg: closest.wd_deg,
+          windDirectionLabel: getWindDirectionLabel(closest.wd_deg),
+          description: closest.weather_desc
+        };
+      }
+    }
+    return null;
+  } catch(e) {
+    console.warn("BMKG Weather API failed:", e);
+    return null;
+  }
+}
+
 function getWeatherDescription(code: number): string {
   if (code === 0) return "Cerah";
   if (code > 0 && code <= 3) return "Berawan";
@@ -149,15 +186,18 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
       })
     ]);
 
-    const currentW = weatherRes.data?.current_weather || { temperature: 28, weathercode: 1, windspeed: 5, winddirection: 0 };
-    const weatherCond: WeatherCondition = {
-      temperature: currentW.temperature,
-      weatherCode: currentW.weathercode,
-      windSpeed: currentW.windspeed,
-      windDirectionDeg: currentW.winddirection,
-      windDirectionLabel: currentW.winddirection !== undefined ? getWindDirectionLabel(currentW.winddirection) : undefined,
-      description: getWeatherDescription(currentW.weathercode)
-    };
+    let weatherCond: WeatherCondition | null = await fetchBMKGWeather(lat, lon);
+    if (!weatherCond) {
+      const currentW = weatherRes.data?.current_weather || { temperature: 28, weathercode: 1, windspeed: 5, winddirection: 0 };
+      weatherCond = {
+        temperature: currentW.temperature,
+        weatherCode: currentW.weathercode,
+        windSpeed: currentW.windspeed,
+        windDirectionDeg: currentW.winddirection,
+        windDirectionLabel: currentW.winddirection !== undefined ? getWindDirectionLabel(currentW.winddirection) : undefined,
+        description: getWeatherDescription(currentW.weathercode)
+      };
+    }
 
     let hourlyData: TideData[] = [];
     let currentHeight = 0;
