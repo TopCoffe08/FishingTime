@@ -74,14 +74,20 @@ export const SPECIES_DB: FishSpecies[] = [
 ];
 
 export const PRESET_LOCATIONS: FishingLocation[] = [
-  { name: "Spot GPS Saat Ini", type: "Perairan/GPS", lat: -1.22, lon: 116.92, bmkgCode: null, bmkgSlug: null },
-  { name: "Sungai Mahakam, Samarinda", type: "Sungai", lat: -0.50, lon: 117.15, bmkgCode: null, bmkgSlug: null },
-  { name: "Pantai Manggar, Balikpapan", type: "Pantai", lat: -1.22, lon: 116.92, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan' },
-  { name: "Muara Teluk Balikpapan", type: "Muara", lat: -1.20, lon: 116.75, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan' },
-  { name: "Danau Jempang, Kukar", type: "Danau", lat: -0.49, lon: 116.18, bmkgCode: null, bmkgSlug: null },
-  { name: "Pulau Derawan, Berau", type: "Laut", lat: 2.28, lon: 118.24, bmkgCode: null, bmkgSlug: null },
-  { name: "Pantai Lamaru, Balikpapan", type: "Pantai", lat: -1.18, lon: 116.95, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan' },
-  { name: "Muara Badak, Kukar", type: "Muara", lat: -0.38, lon: 117.42, bmkgCode: null, bmkgSlug: null },
-  { name: "Teluk Sangkulirang, Kutim", type: "Laut", lat: 0.95, lon: 117.95, bmkgCode: null, bmkgSlug: null },
-  { name: "Sungai Kelay, Berau", type: "Sungai", lat: 2.15, lon: 117.48, bmkgCode: null, bmkgSlug: null }
+  { name: "Sungai Mahakam", type: "Sungai", lat: -0.509420, lon: 117.126430, bmkgCode: null, bmkgSlug: null },
+  { name: "Muara Pegah", type: "Muara", lat: -0.909850, lon: 117.262150, bmkgCode: null, bmkgSlug: null },
+  { name: "Muara Sanga-Sanga", type: "Muara", lat: -0.592140, lon: 117.289450, bmkgCode: null, bmkgSlug: null },
+  { name: "Muara Berau", type: "Muara", lat: -0.218500, lon: 117.531100, bmkgCode: null, bmkgSlug: null },
+  { name: "Karang Mumus", type: "Anak Sungai", lat: -0.505280, lon: 117.152420, bmkgCode: null, bmkgSlug: null },
+  
+  { name: "Teluk Balikpapan", type: "Laut", lat: -1.218450, lon: 116.808900, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan' },
+  { name: "Muara Manggar", type: "Muara", lat: -1.205800, lon: 116.936200, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan' },
+  { name: "Pantai Sepinggan", type: "Laut", lat: -1.345000, lon: 116.965000, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan' },
+
+  { name: "Pulau Beras Basah", type: "Laut", lat: 0.155820, lon: 117.550300, bmkgCode: null, bmkgSlug: null },
+  { name: "Muara Sangatta", type: "Muara", lat: 0.453100, lon: 117.589100, bmkgCode: null, bmkgSlug: null },
+  { name: "Pantai Kenyamukan", type: "Laut", lat: 0.512200, lon: 117.615500, bmkgCode: null, bmkgSlug: null },
+
+  { name: "Pulau Derawan", type: "Laut", lat: 2.284500, lon: 118.242100, bmkgCode: null, bmkgSlug: null },
+  { name: "Selat Maratua", type: "Laut", lat: 2.247200, lon: 118.618400, bmkgCode: null, bmkgSlug: null }
 ];
