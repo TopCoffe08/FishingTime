@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { LocateFixed } from 'lucide-react';
 
 // Fix leafet icon paths
 // @ts-ignore
@@ -26,7 +27,9 @@ L.Marker.prototype.options.icon = DefaultIcon;
 // Child component to update map view when coordinates change
 function ChangeView({ center, zoom }: { center: [number, number], zoom: number }) {
   const map = useMap();
-  map.setView(center, zoom);
+  useEffect(() => {
+    map.setView(center, zoom);
+  }, [center, zoom, map]);
   return null;
 }
 
@@ -41,6 +44,43 @@ function ClickHandler({ onLocationSelect }: { onLocationSelect?: (lat: number, l
   return null;
 }
 
+function LocateControl({ onLocationSelect }: { onLocationSelect?: (lat: number, lon: number) => void }) {
+  const map = useMap();
+  const [locating, setLocating] = useState(false);
+
+  useMapEvents({
+    locationfound(e) {
+      setLocating(false);
+      if (onLocationSelect) {
+        onLocationSelect(e.latlng.lat, e.latlng.lng);
+      }
+    },
+    locationerror(e) {
+      setLocating(false);
+      alert("Gagal mendeteksi lokasi yang akurat: " + e.message);
+    }
+  });
+
+  return (
+    <div className="leaflet-top leaflet-right z-[1000] mt-4 mr-4 pointer-events-auto absolute">
+      <div className="leaflet-control leaflet-bar">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setLocating(true);
+            map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
+          }}
+          className="bg-white hover:bg-slate-100 text-slate-700 w-10 h-10 flex items-center justify-center rounded-xl shadow-md border border-slate-200 transition-colors"
+          title="Lokasi Saya"
+        >
+          <LocateFixed size={20} className={locating ? "animate-pulse text-teal-500" : ""} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function LocationMap({ lat, lon, name, onLocationSelect }: { lat: number, lon: number, name: string, onLocationSelect?: (lat: number, lon: number) => void }) {
   return (
     <div className="w-full h-full rounded-[2rem] overflow-hidden border border-slate-700/50 relative z-0">
@@ -50,6 +90,8 @@ export function LocationMap({ lat, lon, name, onLocationSelect }: { lat: number,
         />
         <ChangeView center={[lat, lon]} zoom={13} />
         <ClickHandler onLocationSelect={onLocationSelect} />
+        <LocateControl onLocationSelect={onLocationSelect} />
+        
         <Marker position={[lat, lon]}>
           <Popup>
             <div className="text-center font-bold text-slate-800">

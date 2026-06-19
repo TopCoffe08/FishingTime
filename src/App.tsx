@@ -392,7 +392,8 @@ export default function App() {
                           (err) => {
                             setIsLocating(false);
                             alert("Gagal mendapatkan lokasi. Pastikan izin GPS diaktifkan.");
-                          }
+                          },
+                          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                         );
                       } else {
                         alert("Browser Anda tidak mendukung GPS.");
