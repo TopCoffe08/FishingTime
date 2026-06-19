@@ -344,8 +344,9 @@ export default function App() {
       const data = await response.json();
       
       setChatMessages(prev => [...prev, { role: 'model', content: data.response || data.error || 'Maaf, terjadi kesalahan.' }]);
-    } catch (e) {
-      setChatMessages(prev => [...prev, { role: 'model', content: 'Maaf, terjadi kegagalan terhubung dengan server AI.' }]);
+    } catch (e: any) {
+      console.error('Chat error:', e);
+      setChatMessages(prev => [...prev, { role: 'model', content: `Maaf, terjadi kegagalan terhubung dengan server AI: ${e.message}` }]);
     } finally {
       setIsChatLoading(false);
     }
