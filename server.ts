@@ -39,14 +39,44 @@ Tolong berikan respon yang ringkas, mudah dipahami (seperti saran teman nelayan 
 Gunakan bahasa Indonesia.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
       });
 
       res.json({ recommendation: response.text });
     } catch (error) {
-      console.error("Error generating recommendation:", error);
+      const error_msg = error instanceof Error ? error.message : "Unknown error";
+      console.error("Error generating recommendation:", error_msg);
       res.json({ recommendation: "Sistem AI sedang mengalami tingginya permintaan atau dalam perbaikan. Kondisi saat ini cukup baik untuk memancing. Perhatikan kondisi air pasang dan selalu berhati-hati." });
+    }
+  });
+
+  // AI Chat Assistant
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { prompt } = req.body;
+      
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: "Kamu adalah 'Angler.AI', ahli memancing yang sangat paham mengenai teknik memancing, cuaca, pasang surut, umpan, dan lokasi (sungai, laut, muara) di Indonesia. Jawab secara informatif, ramah, dan ringkas. DILARANG KERAS menggunakan format markdown seperti tanda bintang (*), tagar (#), atau simbol formatting lainnya dalam balasanmu. Gunakan murni teks biasa. Jika ditanya soal 'radar pendeteksi ikan', jelaskan bahwa aplikasi saat ini sedang mengembangkannya menggunakan data satelit kelautan (seperti klorofil dan suhu permukaan laut) dan AI untuk mendeteksi upwelling (potensi kumpulan ikan).",
+        }
+      });
+
+      res.json({ response: response.text });
+    } catch (error: any) {
+      console.error("Error generating chat response:", error);
+      res.status(500).json({ error: "Sistem AI sedang sibuk." });
     }
   });
 
