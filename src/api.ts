@@ -1,7 +1,101 @@
 import axios from 'axios';
 import * as SunCalc from 'suncalc';
-import { TidePrediction, WeatherCondition, TideData } from './types';
+import { TidePrediction, WeatherCondition, TideData, BMKGTideInfo } from './types';
 import { format, addHours, startOfHour } from 'date-fns';
+
+export const BMKG_ATTRIBUTION = 'Sumber data pasang surut: BMKG';
+const BMKG_PUBLIC_API = 'https://peta-maritim.bmkg.go.id/public_api/pelabuhan';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+export async function fetchBMKGTide(bmkgCode: string): Promise<BMKGTideInfo | null> {
+  try {
+    const res = await axios.get(`${CORS_PROXY}${encodeURIComponent(BMKG_PUBLIC_API)}`, {
+      timeout: 10000
+    });
+
+    if (!res.data) return null;
+
+    const allPorts = Array.isArray(res.data) ? res.data : Object.values(res.data);
+    const portData: any = allPorts.find((p: any) => p.Code === bmkgCode || p.code === bmkgCode);
+
+    if (!portData) {
+      console.warn(`BMKG: Kode pelabuhan ${bmkgCode} tidak ditemukan`);
+      return null;
+    }
+
+    const latestData = Array.isArray(portData.data) ? portData.data[0] : portData;
+    if (!latestData) return null;
+
+    const parseTimeStr = (timeStr: string | undefined, referenceDate: Date = new Date()): Date => {
+      if (!timeStr) return referenceDate;
+      const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+      if (!match) return referenceDate;
+      const result = new Date(referenceDate);
+      result.setHours(parseInt(match[1]), parseInt(match[2]), 0, 0);
+      return result;
+    };
+
+    const now = new Date();
+    return {
+      highTide: parseFloat(latestData.high_tide ?? latestData.High_tide ?? '0'),
+      highTideTime: parseTimeStr(latestData.high_tide_time ?? latestData.High_tide_time, now),
+      lowTide: parseFloat(latestData.low_tide ?? latestData.Low_tide ?? '0'),
+      lowTideTime: parseTimeStr(latestData.low_tide_time ?? latestData.Low_tide_time, now),
+      source: 'bmkg'
+    };
+  } catch (err) {
+    console.warn('BMKG API gagal:', err);
+    return null;
+  }
+}
+
+export function generateAnchoredTideCurve(
+  bmkgData: BMKGTideInfo,
+  startHoursAgo: number = 48,
+  totalHours: number = 216
+): TideData[] {
+  const { highTide, highTideTime, lowTide, lowTideTime } = bmkgData;
+  const avgHeight = (highTide + lowTide) / 2;
+  const amplitude = (highTide - lowTide) / 2;
+
+  const highMs = highTideTime.getTime();
+  const lowMs = lowTideTime.getTime();
+  let halfPeriodMs = Math.abs(highMs - lowMs);
+
+  if (halfPeriodMs < 3 * 3600000 || halfPeriodMs > 14 * 3600000) {
+    halfPeriodMs = 6.2 * 3600000;
+  }
+
+  const fullPeriodMs = halfPeriodMs * 2;
+  const referenceMs = highMs;
+  const angularFreq = (2 * Math.PI) / fullPeriodMs;
+
+  const now = new Date();
+  const results: TideData[] = [];
+  const startTime = new Date(now.getTime() - startHoursAgo * 3600000);
+
+  for (let i = 0; i <= totalHours; i++) {
+    const t = new Date(startTime.getTime() + i * 3600000);
+    const dtMs = t.getTime() - referenceMs;
+    const h = avgHeight + amplitude * Math.cos(angularFreq * dtMs);
+    results.push({ time: t, height: parseFloat(h.toFixed(2)) });
+  }
+
+  return results;
+}
+
+function generateFallbackSineWave(moonPhase: number, baseTime: Date): TideData[] {
+  const results: TideData[] = [];
+  const baseHeight = 1.0;
+  const tideMultiplier = 1 + 0.3 * Math.cos(moonPhase * Math.PI * 2 * 2);
+  const startOfDayTime = new Date(baseTime.getFullYear(), baseTime.getMonth(), baseTime.getDate());
+  for (let i = -48; i < 168; i++) {
+    const t = addHours(startOfDayTime, i);
+    const h = baseHeight + Math.sin((t.getTime() / (1000 * 60 * 60)) * (Math.PI / 6)) * 1.5 * tideMultiplier;
+    results.push({ time: t, height: Number(h.toFixed(2)) });
+  }
+  return results;
+}
 
 function getWeatherDescription(code: number): string {
   if (code === 0) return "Cerah";
@@ -26,7 +120,7 @@ function getWindDirectionLabel(deg: number): string {
   return "Tidak ada angin";
 }
 
-export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
+export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: string | null): Promise<{
   tide: TidePrediction,
   weather: WeatherCondition,
   moonPhaseStr: string
@@ -103,8 +197,16 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
     }
 
     let isFallback = false;
+    let dataSource: 'marine-api' | 'bmkg' | 'estimated' = 'estimated';
+    let bmkgTideInfo: BMKGTideInfo | null = null;
 
-    if (marineRes.data && marineRes.data.hourly && marineRes.data.hourly.sea_level) {
+    const hasMarineData = marineRes.data 
+      && marineRes.data.hourly 
+      && marineRes.data.hourly.sea_level
+      && marineRes.data.hourly.sea_level.some((v: number|null) => v !== null);
+
+    if (hasMarineData) {
+      dataSource = 'marine-api';
       const times = marineRes.data.hourly.time;
       const levels = marineRes.data.hourly.sea_level;
       
@@ -116,18 +218,23 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
           });
         }
       }
-    } else {
-      isFallback = true;
-      // Fallback: Generate sine wave tide curve for demo functionality
-      const baseHeight = 1.0;
-      const tideMultiplier = 1 + 0.3 * Math.cos(phaseValue * Math.PI * 2 * 2); // Spring/neap tide modulation
-      const startOfDayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      for(let i=-48; i<168; i++) {
-        const t = addHours(startOfDayTime, i);
-        // Simple 12-hour tide cycle
-        const h = baseHeight + Math.sin((t.getTime() / (1000 * 60 * 60)) * (Math.PI / 6)) * 1.5 * tideMultiplier;
-        hourlyData.push({ time: t, height: Number(h.toFixed(2)) });
+    } else if (bmkgCode) {
+      console.log('Marine API tidak ada data, mencoba BMKG...');
+      bmkgTideInfo = await fetchBMKGTide(bmkgCode);
+
+      if (bmkgTideInfo) {
+        dataSource = 'bmkg';
+        hourlyData = generateAnchoredTideCurve(bmkgTideInfo);
+        console.log('Berhasil menggunakan data BMKG');
+      } else {
+        dataSource = 'estimated';
+        isFallback = true;
+        hourlyData = generateFallbackSineWave(phaseValue, now);
       }
+    } else {
+      dataSource = 'estimated';
+      isFallback = true;
+      hourlyData = generateFallbackSineWave(phaseValue, now);
     }
 
     // Determine current status
@@ -167,7 +274,14 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
         nextLowTide,
         hourlyData,
         dailySolar,
-        isFallback
+        isFallback,
+        dataSource,
+        bmkgHighTide: bmkgTideInfo
+          ? { height: bmkgTideInfo.highTide, time: bmkgTideInfo.highTideTime }
+          : null,
+        bmkgLowTide: bmkgTideInfo
+          ? { height: bmkgTideInfo.lowTide, time: bmkgTideInfo.lowTideTime }
+          : null,
       },
       weather: weatherCond,
       moonPhaseStr

@@ -1,8 +1,18 @@
+export interface BMKGTideInfo {
+  highTide: number;
+  highTideTime: Date;
+  lowTide: number;
+  lowTideTime: Date;
+  source: 'bmkg';
+}
+
 export interface FishingLocation {
   name: string;
-  type: 'Sungai' | 'Anak Sungai' | 'Muara' | 'Pantai' | 'Laut' | 'Rawa';
+  type: string;
   lat: number;
   lon: number;
+  bmkgCode?: string | null;
+  bmkgSlug?: string | null;
 }
 
 export interface TideData {
@@ -25,6 +35,9 @@ export interface TidePrediction {
   hourlyData: TideData[];
   dailySolar?: DailySolarData[];
   isFallback?: boolean;
+  dataSource?: 'marine-api' | 'bmkg' | 'estimated';
+  bmkgHighTide?: { height: number; time: Date } | null;
+  bmkgLowTide?: { height: number; time: Date } | null;
 }
 
 export interface WeatherCondition {

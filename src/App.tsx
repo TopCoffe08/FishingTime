@@ -152,7 +152,7 @@ export default function App() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const { tide, weather, moonPhaseStr } = await fetchTideAndWeather(location.lat, location.lon);
+        const { tide, weather, moonPhaseStr } = await fetchTideAndWeather(location.lat, location.lon, location.bmkgCode);
         setTide(tide);
         setWeather(weather);
         setMoonPhase(moonPhaseStr);
@@ -418,12 +418,6 @@ export default function App() {
                 </div>
               ) : tide && weather ? (
                 <>
-                  {tide.isFallback && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-amber-200 text-xs sm:text-sm font-medium flex items-start gap-3">
-                      <Info size={18} className="shrink-0 text-amber-400 mt-0.5" />
-                      <p>Data pasang surut resmi dari Open-Meteo Marine API tidak tersedia untuk lokasi / koordinat ini. Data yang ditampilkan adalah estimasi fallback.</p>
-                    </div>
-                  )}
                   <div className="bg-gradient-to-br from-teal-600 to-emerald-600 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-center items-center text-center">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-4 text-teal-100 flex items-center gap-2">
@@ -593,6 +587,60 @@ export default function App() {
                         dailySolar={tide.dailySolar} 
                       />
                     </div>
+                    {tide && (
+                      <div className={`
+                        flex items-center gap-2 text-xs font-bold px-4 py-2.5 
+                        rounded-2xl border mt-3
+                        ${tide.dataSource === 'marine-api' 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                          : tide.dataSource === 'bmkg' 
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                        }
+                      `}>
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${
+                          tide.dataSource === 'marine-api' ? 'bg-emerald-400' :
+                          tide.dataSource === 'bmkg'       ? 'bg-blue-400'    :
+                                                             'bg-amber-400'
+                        }`} />
+                        <div className="flex flex-col gap-1 w-full">
+                          {tide.dataSource === 'marine-api' && (
+                            <span>Data resmi Open-Meteo Marine</span>
+                          )}
+                          {tide.dataSource === 'bmkg' && (
+                            <span>
+                              Sumber data pasang surut: BMKG ·{' '}
+                              {tide.bmkgHighTide && (
+                                <span>
+                                  Pasang: {tide.bmkgHighTide.height.toFixed(2)}m
+                                  pukul {format(tide.bmkgHighTide.time, 'HH:mm')} ·{' '}
+                                </span>
+                              )}
+                              {tide.bmkgLowTide && (
+                                <span>
+                                  Surut: {tide.bmkgLowTide.height.toFixed(2)}m 
+                                  pukul {format(tide.bmkgLowTide.time, 'HH:mm')}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                          {tide.dataSource === 'estimated' && (
+                            <span>
+                              ⚠️ Data pasang surut tidak tersedia untuk lokasi ini. Data saat ini adalah estimasi fallback.
+                              Cek data resmi:{' '}
+                              <a 
+                                href="https://maritim.bmkg.go.id/cuaca/pasut" 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="underline hover:text-white"
+                              >
+                                BMKG Pasang Surut
+                              </a>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Unified Interactive Map */}
