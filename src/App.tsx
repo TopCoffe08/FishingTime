@@ -6,7 +6,7 @@ import { TideChart } from './components/TideChart';
 import { LocationMap } from './components/LocationMap';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass, Activity } from 'lucide-react';
+import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass, Activity, TrendingUp, BarChart2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import localforage from 'localforage';
 import { calculateSolunarData, SolunarDayData } from './solunar';
@@ -31,7 +31,7 @@ export default function App() {
   const solunar = React.useMemo(() => {
     return calculateSolunarData(displayedDate, location.lat, location.lon);
   }, [displayedDate.getDate(), displayedDate.getMonth(), location.lat, location.lon]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log' | 'evaluasi'>('dashboard');
   const [isAnalisaExpanded, setIsAnalisaExpanded] = useState(false);
 
   const [logs, setLogs] = useState<CatchRecord[]>([]);
@@ -190,6 +190,13 @@ export default function App() {
             >
               <BookOpen size={20} className="md:hidden mb-0.5" />
               <span>Jurnal</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('evaluasi')}
+              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 sm:px-4 md:px-8 py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-all rounded-xl ${activeTab === 'evaluasi' ? 'text-teal-400 bg-teal-500/10 md:bg-teal-500 md:text-slate-900 md:shadow-lg md:shadow-teal-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            >
+              <TrendingUp size={20} className="md:hidden mb-0.5" />
+              <span>Evaluasi</span>
             </button>
           </div>
         </nav>
@@ -838,9 +845,109 @@ export default function App() {
               </div>
             )}
             
+             </motion.div>
+           )}
+
+          {activeTab === 'evaluasi' && (
+            <motion.div 
+              key="evaluasi"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              className="flex flex-col gap-6"
+            >
+              <div className="bg-slate-800/50 p-6 md:p-8 rounded-[2.5rem] border border-slate-700">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center">
+                    <TrendingUp className="text-teal-400" size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-200">Monitoring & Evaluasi</h2>
+                    <p className="text-sm text-slate-400">Ringkasan statistik dari rekaman memancing Anda</p>
+                  </div>
+                </div>
+
+                {logs.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500">
+                    <BarChart2 size={48} className="mx-auto mb-4 opacity-20" />
+                    Belum ada data jurnal untuk dievaluasi.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="bg-slate-900/40 p-5 sm:p-6 rounded-[2rem] border border-slate-700">
+                      <h3 className="text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-widest mb-2 sm:mb-4">Total Tangkapan Tercatat</h3>
+                      <p className="text-3xl sm:text-4xl font-black text-teal-400">{logs.length}</p>
+                      <p className="text-xs text-slate-400 mt-2">Sesi memancing didokumentasikan</p>
+                    </div>
+                    
+                    <div className="bg-slate-900/40 p-5 sm:p-6 rounded-[2rem] border border-slate-700">
+                      <h3 className="text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-widest mb-2 sm:mb-4">Spesies Terbanyak</h3>
+                      <p className="text-xl sm:text-2xl font-bold text-slate-200 capitalize">
+                        {
+                          Object.entries(
+                            logs.reduce((acc, log) => {
+                              if (log.species) {
+                                acc[log.species.toLowerCase()] = (acc[log.species.toLowerCase()] || 0) + 1;
+                              }
+                              return acc;
+                            }, {} as Record<string, number>)
+                          ).sort((a, b) => b[1] - a[1])[0]?.[0] || '-'
+                        }
+                      </p>
+                      <p className="text-xs text-slate-400 mt-2">Paling sering ditangkap</p>
+                    </div>
+
+                    <div className="bg-slate-900/40 p-5 sm:p-6 rounded-[2rem] border border-slate-700 md:col-span-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                       <div>
+                         <h3 className="text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-widest mb-2 sm:mb-4">Lokasi Paling Produktif</h3>
+                         <p className="text-lg sm:text-xl font-bold text-slate-200">
+                          {
+                            Object.entries(
+                              logs.reduce((acc, log) => {
+                                if (log.location) {
+                                  acc[log.location] = (acc[log.location] || 0) + 1;
+                                }
+                                return acc;
+                              }, {} as Record<string, number>)
+                            ).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Belum Ada'
+                          }
+                        </p>
+                        <p className="text-xs text-slate-400 mt-2">Spot dengan riwayat tangkapan terbanyak</p>
+                       </div>
+                       <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                         <MapPin className="text-amber-400" size={24} />
+                       </div>
+                    </div>
+
+                    <div className="bg-slate-900/40 p-5 sm:p-6 rounded-[2rem] border border-slate-700 md:col-span-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                       <div>
+                         <h3 className="text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-widest mb-2 sm:mb-4">Umpan Paling Ampuh</h3>
+                         <p className="text-lg sm:text-xl font-bold text-slate-200 capitalize">
+                          {
+                            Object.entries(
+                              logs.reduce((acc, log) => {
+                                if (log.bait) {
+                                  acc[log.bait.toLowerCase()] = (acc[log.bait.toLowerCase()] || 0) + 1;
+                                }
+                                return acc;
+                              }, {} as Record<string, number>)
+                            ).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Belum Ada Data'
+                          }
+                        </p>
+                        <p className="text-xs text-slate-400 mt-2">Umpan yang paling sering menghasilkan tangkapan</p>
+                       </div>
+                       <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                         <Fish className="text-orange-400" size={24} />
+                       </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
-        </AnimatePresence>
+
+         </AnimatePresence>
       </main>
     </div>
   );
