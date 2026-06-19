@@ -740,10 +740,41 @@ export default function App() {
               <div className="bg-slate-800/80 p-5 md:p-6 rounded-[2rem] border border-slate-700 shadow-xl overflow-hidden relative mb-2">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
               <h2 className="text-xl font-black text-white mb-2 uppercase tracking-tight">Katalog Umpan & Ikan Target</h2>
-              <p className="text-sm font-medium text-slate-400">Pilih umpan jitu dan teknik pancing berdasarkan kondisi riil dan tipe spesies di ekosistem perairan {location.type}.</p>
+              <p className="text-sm font-medium text-slate-400">Menyesuaikan kondisi dan ekosistem di: <strong className="text-teal-400">{location.name}</strong></p>
             </div>
+
+            {/* Karakteristik Lokasi */}
+            {(location.targets || location.conditions || location.bait) && (
+              <div className="bg-slate-900/80 p-5 md:p-6 rounded-[2.5rem] border border-slate-700/50 text-left">
+                <h4 className="text-sm md:text-md font-black text-white uppercase tracking-wider mb-5 border-b border-white/10 pb-3 flex items-center gap-2">
+                  <CheckCircle2 size={18} className="text-teal-400"/>
+                  Karakteristik Spesifik Area Ini
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {location.targets && (
+                    <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-2 flex items-center gap-1.5"><Fish size={14} className="text-amber-400"/> Target Utama</span>
+                      <span className="text-sm text-slate-200 leading-relaxed block font-medium">{location.targets}</span>
+                    </div>
+                  )}
+                  {location.conditions && (
+                    <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-2 flex items-center gap-1.5"><Droplets size={14} className="text-blue-400"/> Kondisi Ideal</span>
+                      <span className="text-sm text-slate-200 leading-relaxed block font-medium">{location.conditions}</span>
+                    </div>
+                  )}
+                  {location.bait && (
+                    <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-2 flex items-center gap-1.5"><Info size={14} className="text-rose-400"/> Rekomendasi Umum</span>
+                      <span className="text-sm text-slate-200 leading-relaxed block font-medium">{location.bait}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="bg-slate-800/30 p-6 rounded-[2.5rem] border border-slate-700/50">
-              <h2 className="text-sm font-black uppercase tracking-widest text-white mb-6">Daftar Rekomendasi ({location.type})</h2>
+              <h2 className="text-sm font-black uppercase tracking-widest text-white mb-6">Database Spesies di Lokasi Ini</h2>
               <div className="grid gap-4">
                 {SPECIES_DB.filter(s => s.locations ? s.locations.includes(location.name) : s.habitat.includes(location.type)).map(s => (
                   <div key={s.id} className="bg-slate-800/50 p-4 rounded-3xl border border-slate-700 flex flex-col md:flex-row gap-4 md:items-center">
