@@ -6,7 +6,7 @@ import { TideChart } from './components/TideChart';
 import { LocationMap } from './components/LocationMap';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass, Activity, TrendingUp, BarChart2, Download, Upload, Edit3, UploadCloud, Sparkles, Send, Calendar } from 'lucide-react';
+import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass, Activity, TrendingUp, BarChart2, Download, Upload, Edit3, UploadCloud, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import localforage from 'localforage';
@@ -135,7 +135,7 @@ export default function App() {
     return SPECIES_DB.filter(s => s.habitat.includes(fallbackType));
   }, [location.name, location.type]);
   
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log' | 'evaluasi' | 'ai'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log' | 'evaluasi'>('dashboard');
   const [isAnalisaExpanded, setIsAnalisaExpanded] = useState(false);
 
   const [logs, setLogs] = useState<CatchRecord[]>([]);
@@ -153,13 +153,6 @@ export default function App() {
 
   const [locationSearch, setLocationSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-
-  // AI Chat States
-  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'model', content: string}[]>([
-    {role: 'model', content: 'Halo! Saya Angler.AI, asisten mancing cerdas Anda. Ada yang bisa saya bantu terkait spot, cuaca, atau umpan? 🎣'}
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(async () => {
@@ -324,34 +317,6 @@ export default function App() {
     setIsAddingLog(true);
   };
 
-  const handleSendChat = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
-    
-    // Convert current user message to be appended
-    const newMessages = [...chatMessages, { role: 'user' as const, content: chatInput }];
-    setChatMessages(newMessages);
-    setChatInput('');
-    setIsChatLoading(true);
-
-    try {
-      const promptContext = `[Sistem: Konteks Pengguna Saat Ini. Lokasi: ${location.name}, Cuaca: ${weather?.description || '-'}, Suhu: ${weather?.temperature || '-'}°C, Pasang: ${tide?.currentStatus || '-'}, Fase Bulan: ${moonPhase}]\n\nPengguna: ${chatInput}`;
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptContext })
-      });
-      const data = await response.json();
-      
-      setChatMessages(prev => [...prev, { role: 'model', content: data.response || data.error || 'Maaf, terjadi kesalahan.' }]);
-    } catch (e: any) {
-      console.error('Chat error:', e);
-      setChatMessages(prev => [...prev, { role: 'model', content: `Maaf, terjadi kegagalan terhubung dengan server AI: ${e.message}` }]);
-    } finally {
-      setIsChatLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#0A0F1D] text-slate-100 pb-20 md:pb-0 font-sans flex flex-col items-center">
       
@@ -419,13 +384,6 @@ export default function App() {
             >
               <TrendingUp size={20} className="md:hidden mb-0.5" />
               <span>Evaluasi</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('ai')}
-              className={`flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 sm:px-4 md:px-8 py-2 font-bold text-[10px] md:text-sm md:rounded-[1.5rem] transition-all rounded-xl ${activeTab === 'ai' ? 'text-teal-400 bg-teal-500/10 md:bg-teal-500 md:text-slate-900 md:shadow-lg md:shadow-teal-500/20' : 'text-indigo-400 hover:text-white hover:bg-slate-800'}`}
-            >
-              <Sparkles size={20} className="md:hidden mb-0.5" />
-              <span className="flex items-center gap-1.5"><Sparkles size={16} className="hidden md:block"/> Tanya AI</span>
             </button>
           </div>
         </nav>
@@ -1446,67 +1404,6 @@ export default function App() {
                     })()}
                   </div>
                 )}
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === 'ai' && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.3 }}
-              className="bg-gradient-to-br from-indigo-900/30 to-slate-900/80 rounded-[2.5rem] border border-indigo-500/20 shadow-2xl p-4 sm:p-6 md:p-8 flex flex-col h-[70vh] max-h-[800px]"
-            >
-              <div className="flex items-center gap-3 mb-6 shrink-0">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                  <Sparkles className="text-indigo-400" size={24} />
-                </div>
-                <div>
-                  <h2 className="text-xl md:text-2xl font-black text-slate-200">Tanya Angler.AI</h2>
-                  <p className="text-sm text-slate-400">Asisten mancing dengan analisa data satelit dan AI</p>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4 custom-scrollbar">
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] md:max-w-[75%] rounded-3xl px-5 py-3.5 text-sm md:text-[15px] leading-relaxed shadow-sm ${
-                      msg.role === 'user' 
-                      ? 'bg-indigo-600 text-white rounded-br-sm' 
-                      : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-bl-sm'
-                    }`}>
-                      <div className="whitespace-pre-wrap">{msg.content}</div>
-                    </div>
-                  </div>
-                ))}
-                {isChatLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-slate-800 border border-slate-700 text-slate-400 rounded-3xl rounded-bl-sm px-5 py-3.5 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{animationDelay: '0ms'}}></div>
-                      <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{animationDelay: '150ms'}}></div>
-                      <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{animationDelay: '300ms'}}></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="relative shrink-0 mt-auto">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendChat()}
-                  placeholder="Ketik pertanyaan Anda di sini..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-full py-4 pl-6 pr-14 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-500 transition-all font-medium"
-                />
-                <button
-                  onClick={handleSendChat}
-                  disabled={!chatInput.trim() || isChatLoading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-full flex items-center justify-center transition-colors shadow-md"
-                >
-                  <Send size={18} className={chatInput.trim() && !isChatLoading ? "translate-x-0.5" : ""} />
-                </button>
               </div>
             </motion.div>
           )}
