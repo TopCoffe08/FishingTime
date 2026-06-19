@@ -24,6 +24,7 @@ export interface TidePrediction {
   nextLowTide: Date | null;
   hourlyData: TideData[];
   dailySolar?: DailySolarData[];
+  isFallback?: boolean;
 }
 
 export interface WeatherCondition {

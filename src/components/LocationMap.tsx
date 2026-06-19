@@ -4,8 +4,11 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 // Fix leafet icon paths
+// @ts-ignore
 import icon from 'leaflet/dist/images/marker-icon.png';
+// @ts-ignore
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+// @ts-ignore
 import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 
 let DefaultIcon = L.icon({

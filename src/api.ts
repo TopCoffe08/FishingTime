@@ -102,6 +102,8 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
       moonPhaseStr = "Sabit Akhir";
     }
 
+    let isFallback = false;
+
     if (marineRes.data && marineRes.data.hourly && marineRes.data.hourly.sea_level) {
       const times = marineRes.data.hourly.time;
       const levels = marineRes.data.hourly.sea_level;
@@ -115,6 +117,7 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
         }
       }
     } else {
+      isFallback = true;
       // Fallback: Generate sine wave tide curve for demo functionality
       const baseHeight = 1.0;
       const tideMultiplier = 1 + 0.3 * Math.cos(phaseValue * Math.PI * 2 * 2); // Spring/neap tide modulation
@@ -163,7 +166,8 @@ export async function fetchTideAndWeather(lat: number, lon: number): Promise<{
         nextHighTide,
         nextLowTide,
         hourlyData,
-        dailySolar
+        dailySolar,
+        isFallback
       },
       weather: weatherCond,
       moonPhaseStr

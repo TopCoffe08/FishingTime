@@ -6,8 +6,9 @@ import { TideChart } from './components/TideChart';
 import { LocationMap } from './components/LocationMap';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass, Activity, TrendingUp, BarChart2 } from 'lucide-react';
+import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass, Activity, TrendingUp, BarChart2, Download, Upload, Edit3, UploadCloud } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import localforage from 'localforage';
 import { calculateSolunarData, SolunarDayData } from './solunar';
 
@@ -15,6 +16,24 @@ localforage.config({
   name: 'FishingTime',
   storeName: 'logs_store'
 });
+
+const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, maxWidth / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = url;
+  });
+};
 
 export default function App() {
   const [location, setLocation] = useState<FishingLocation>(PRESET_LOCATIONS[0]);
@@ -35,7 +54,9 @@ export default function App() {
   const [isAnalisaExpanded, setIsAnalisaExpanded] = useState(false);
 
   const [logs, setLogs] = useState<CatchRecord[]>([]);
+  const [isLogsLoaded, setIsLogsLoaded] = useState(false);
   const [isAddingLog, setIsAddingLog] = useState(false);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [newLogNotes, setNewLogNotes] = useState('');
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
   const [newSpecies, setNewSpecies] = useState('');
@@ -44,6 +65,26 @@ export default function App() {
   const [newBait, setNewBait] = useState('');
   const [searchLog, setSearchLog] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const [locationSearch, setLocationSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    const handler = setTimeout(async () => {
+      if (locationSearch.length < 3) {
+        setSearchResults([]);
+        return;
+      }
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationSearch)}&format=json&limit=5`);
+        const data = await res.json();
+        setSearchResults(data);
+      } catch (err) {
+        console.error("Failed to search location:", err);
+      }
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [locationSearch]);
 
   const handleMapClick = async (lat: number, lon: number) => {
     setIsLocating(true);
@@ -76,7 +117,11 @@ export default function App() {
           localforage.setItem('fishing_logs', parsed);
         }
       }
-    }).catch(err => console.error("Could not load logs", err));
+      setIsLogsLoaded(true);
+    }).catch(err => {
+      console.error("Could not load logs", err);
+      setIsLogsLoaded(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -93,8 +138,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localforage.setItem('fishing_logs', logs).catch(err => console.error("Could not save logs", err));
-  }, [logs]);
+    if (isLogsLoaded) {
+      localforage.setItem('fishing_logs', logs).catch(err => console.error("Could not save logs", err));
+    }
+  }, [logs, isLogsLoaded]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -129,6 +176,61 @@ export default function App() {
     
     loadData();
   }, [location, logs]);
+
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(logs, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fishing-log-${format(new Date(), 'yyyyMMdd')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = () => {
+    const header = 'Tanggal,Lokasi,Spesies,Berat(kg),Panjang(cm),Umpan,Cuaca,Pasang,Catatan';
+    const rows = logs.map(l =>
+      `"${l.date}","${l.location}","${l.species||''}","${l.weight||''}","${l.length||''}","${l.bait||''}","${l.weatherCondition||''}","${l.tideCondition||''}","${(l.notes||'').replace(/"/g, '""')}"`
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fishing-log-${format(new Date(), 'yyyyMMdd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const imported: CatchRecord[] = JSON.parse(ev.target?.result as string);
+        const existingIds = new Set(logs.map(l => l.id));
+        const newLogs = imported.filter(l => !existingIds.has(l.id));
+        setLogs([...logs, ...newLogs]);
+        alert(`Berhasil mengimpor ${newLogs.length} catatan baru.`);
+      } catch {
+        alert('File tidak valid. Pastikan file JSON dari export FishingTime.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleEditLog = (log: CatchRecord) => {
+    setEditingLogId(log.id);
+    setNewSpecies(log.species || '');
+    setNewWeight(log.weight?.toString() || '');
+    setNewLength(log.length?.toString() || '');
+    setNewBait(log.bait || '');
+    setNewLogNotes(log.notes);
+    setNewPhotoUrl(log.photoUrl || '');
+    setIsAddingLog(true);
+  };
 
   return (
     <div className="min-h-screen bg-[#0A0F1D] text-slate-100 pb-20 md:pb-0 font-sans flex flex-col items-center">
@@ -218,6 +320,32 @@ export default function App() {
                 <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block">Lokasi Memancing</label>
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="relative flex-1">
+                    <input 
+                      type="text"
+                      className="w-full h-12 md:h-14 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-sm font-bold rounded-2xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-500 outline-none truncate mb-3"
+                      placeholder="Cari desa, kota, muara..."
+                      value={locationSearch}
+                      onChange={(e) => setLocationSearch(e.target.value)}
+                    />
+                    {searchResults.length > 0 && (
+                      <div className="absolute top-14 left-0 w-full bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden text-sm">
+                        {searchResults.map(r => (
+                          <button 
+                            key={r.place_id} 
+                            className="w-full text-left px-4 py-3 border-b border-slate-700/50 hover:bg-slate-700 text-slate-200 transition"
+                            onClick={() => {
+                              const name = r.display_name.split(',')[0];
+                              setLocation({ name, type: 'Custom', lat: parseFloat(r.lat), lon: parseFloat(r.lon) });
+                              setSearchResults([]);
+                              setLocationSearch('');
+                            }}
+                          >
+                            <span className="block font-bold truncate">{r.display_name.split(',')[0]}</span>
+                            <span className="block text-[10px] text-slate-400 truncate">{r.display_name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <select 
                       className="w-full h-12 md:h-14 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-sm font-bold rounded-2xl focus:ring-teal-500 focus:border-teal-500 block px-4 pr-10 appearance-none outline-none truncate"
                       value={location.name}
@@ -290,6 +418,12 @@ export default function App() {
                 </div>
               ) : tide && weather ? (
                 <>
+                  {tide.isFallback && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-amber-200 text-xs sm:text-sm font-medium flex items-start gap-3">
+                      <Info size={18} className="shrink-0 text-amber-400 mt-0.5" />
+                      <p>Data pasang surut resmi dari Open-Meteo Marine API tidak tersedia untuk lokasi / koordinat ini. Data yang ditampilkan adalah estimasi fallback.</p>
+                    </div>
+                  )}
                   <div className="bg-gradient-to-br from-teal-600 to-emerald-600 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-center items-center text-center">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-4 text-teal-100 flex items-center gap-2">
@@ -624,14 +758,24 @@ export default function App() {
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-3">
                   <h2 className="text-lg font-black text-white px-2">Jurnal Tangkapan Saya</h2>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <input 
                       type="text" 
                       placeholder="Cari catatan..." 
                       value={searchLog}
                       onChange={(e) => setSearchLog(e.target.value)}
-                      className="flex-1 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-xs font-medium rounded-xl px-3 py-2 outline-none focus:border-teal-500"
+                      className="flex-1 min-w-[120px] bg-slate-900/60 border border-slate-700/50 text-slate-100 text-xs font-medium rounded-xl px-3 py-2 outline-none focus:border-teal-500"
                     />
+                    <button onClick={handleExportJSON} title="Export JSON" className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl hover:bg-slate-700 transition">
+                       <Download size={16} />
+                    </button>
+                    <button onClick={handleExportCSV} title="Export CSV" className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl hover:bg-slate-700 transition">
+                       <BarChart2 size={16} />
+                    </button>
+                    <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" id="import-json" />
+                    <label htmlFor="import-json" title="Import JSON" className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl hover:bg-slate-700 transition cursor-pointer">
+                      <UploadCloud size={16} />
+                    </label>
                     <button 
                       onClick={() => setIsAddingLog(true)}
                       className="bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 font-bold py-2 px-3 sm:px-4 rounded-xl text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shrink-0">
@@ -648,13 +792,22 @@ export default function App() {
                       <div className="text-xs text-slate-400 font-bold flex items-center gap-2">
                         <Clock size={12} className="text-teal-400" /> {log.date}
                       </div>
-                      <button 
-                        onClick={() => setLogs(logs.filter(l => l.id !== log.id))}
-                        className="text-slate-500 hover:text-red-400 transition-colors"
-                        title="Hapus Catatan"
-                      >
-                        <X size={16} />
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleEditLog(log)}
+                          className="text-slate-500 hover:text-teal-400 transition-colors"
+                          title="Edit Catatan"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                        <button 
+                          onClick={() => setLogs(logs.filter(l => l.id !== log.id))}
+                          className="text-slate-500 hover:text-red-400 transition-colors"
+                          title="Hapus Catatan"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                     </div>
                     {log.photoUrl && (
                       <div className="my-4 rounded-2xl overflow-hidden border border-slate-700 aspect-video w-full bg-slate-900 flex items-center justify-center relative">
@@ -691,10 +844,13 @@ export default function App() {
               </div>
             )}
 
-            {isAddingLog && (
+              {isAddingLog && (() => {
+                const weightError = newWeight && (parseFloat(newWeight) <= 0 || parseFloat(newWeight) > 999) ? 'Berat harus antara 0.01 - 999 kg' : null;
+                const lengthError = newLength && (parseFloat(newLength) <= 0 || parseFloat(newLength) > 500) ? 'Panjang harus antara 1 - 500 cm' : null;
+                return (
               <div className="bg-slate-800/80 p-5 md:p-8 rounded-[2rem] border border-slate-700 shadow-xl">
                 <h2 className="text-lg font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-                  <BookOpen className="text-teal-400" /> Catat Hasil Tangkapan
+                  <BookOpen className="text-teal-400" /> {editingLogId ? 'Edit Catatan' : 'Catat Hasil Tangkapan'}
                 </h2>
                 
                 <div className="flex flex-col gap-5">
@@ -721,22 +877,28 @@ export default function App() {
                         <input 
                           type="number"
                           step="0.1"
+                          min="0.01"
+                          max="999"
                           value={newWeight}
                           onChange={(e) => setNewWeight(e.target.value)}
                           placeholder="0.0"
                           className="w-full h-12 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-600 outline-none"
                         />
+                        {weightError && <p className="text-red-400 mt-1 text-[10px]">{weightError}</p>}
                       </div>
                       <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Panjang (cm)</label>
                         <input 
                           type="number"
                           step="1"
+                          min="1"
+                          max="500"
                           value={newLength}
                           onChange={(e) => setNewLength(e.target.value)}
                           placeholder="0"
                           className="w-full h-12 bg-slate-900/80 border border-slate-700/50 text-slate-100 text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 placeholder-slate-600 outline-none"
                         />
+                        {lengthError && <p className="text-red-400 mt-1 text-[10px]">{lengthError}</p>}
                       </div>
                     </div>
 
@@ -771,14 +933,15 @@ export default function App() {
                     <input 
                       type="file"
                       accept="image/*"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setNewPhotoUrl(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
+                          try {
+                            const compressed = await compressImage(file);
+                            setNewPhotoUrl(compressed);
+                          } catch (err) {
+                            console.error("Failed to compress image", err);
+                          }
                         }
                       }}
                       className="block w-full text-sm text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-[12px] file:border-0 file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-slate-700 file:text-teal-400 hover:file:bg-slate-600 file:transition-colors bg-slate-900/50 p-1.5 rounded-xl border border-slate-700/50"
@@ -800,6 +963,7 @@ export default function App() {
                     <button 
                       onClick={() => {
                         setIsAddingLog(false);
+                        setEditingLogId(null);
                         setNewLogNotes('');
                         setNewPhotoUrl('');
                         setNewSpecies('');
@@ -813,23 +977,36 @@ export default function App() {
                     </button>
                     <button 
                       onClick={() => {
-                        if (!newLogNotes.trim()) return;
+                        if (!newLogNotes.trim() || weightError || lengthError) return;
                         
-                        const newLog = {
-                          id: Date.now().toString(),
-                          date: format(new Date(), 'dd MMM yyyy, HH:mm', { locale: idLocale }),
-                          location: location.name,
-                          notes: newLogNotes,
-                          photoUrl: newPhotoUrl.trim() || undefined,
-                          species: newSpecies.trim() || undefined,
-                          weight: parseFloat(newWeight) || undefined,
-                          length: parseFloat(newLength) || undefined,
-                          bait: newBait.trim() || undefined,
-                          weatherCondition: weather ? `${weather.description}, ${weather.temperature}°C` : undefined,
-                          tideCondition: tide ? tide.status : undefined
-                        };
+                        if (editingLogId) {
+                          setLogs(logs.map(l => l.id === editingLogId ? {
+                            ...l,
+                            notes: newLogNotes,
+                            photoUrl: newPhotoUrl.trim() || undefined,
+                            species: newSpecies.trim() || undefined,
+                            weight: parseFloat(newWeight) || undefined,
+                            length: parseFloat(newLength) || undefined,
+                            bait: newBait.trim() || undefined,
+                          } : l));
+                          setEditingLogId(null);
+                        } else {
+                          const newLog = {
+                            id: Date.now().toString(),
+                            date: format(new Date(), 'dd MMM yyyy, HH:mm', { locale: idLocale }),
+                            location: location.name,
+                            notes: newLogNotes,
+                            photoUrl: newPhotoUrl.trim() || undefined,
+                            species: newSpecies.trim() || undefined,
+                            weight: parseFloat(newWeight) || undefined,
+                            length: parseFloat(newLength) || undefined,
+                            bait: newBait.trim() || undefined,
+                            weatherCondition: weather ? `${weather.description}, ${weather.temperature}°C` : undefined,
+                            tideCondition: tide ? tide.status : undefined
+                          };
+                          setLogs([...logs, newLog]);
+                        }
                         
-                        setLogs([...logs, newLog]);
                         setNewLogNotes('');
                         setNewPhotoUrl('');
                         setNewSpecies('');
@@ -838,7 +1015,7 @@ export default function App() {
                         setNewBait('');
                         setIsAddingLog(false);
                       }}
-                      disabled={!newLogNotes.trim()}
+                      disabled={!newLogNotes.trim() || !!weightError || !!lengthError}
                       className="flex-1 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 disabled:hover:bg-teal-500 text-slate-900 font-black py-3.5 rounded-2xl shadow-lg shadow-teal-500/20 transition-colors text-xs uppercase tracking-wider flex items-center justify-center gap-2"
                     >
                       <Save size={16} /> Simpan
@@ -846,7 +1023,8 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            )}
+                );
+              })()}
             
              </motion.div>
            )}
@@ -895,7 +1073,7 @@ export default function App() {
                               }
                               return acc;
                             }, {} as Record<string, number>)
-                          ).sort((a, b) => b[1] - a[1])[0]?.[0] || '-'
+                          ).sort((a, b) => Number(b[1]) - Number(a[1]))[0]?.[0] || '-'
                         }
                       </p>
                       <p className="text-xs text-slate-400 mt-2">Paling sering ditangkap</p>
@@ -913,7 +1091,7 @@ export default function App() {
                                 }
                                 return acc;
                               }, {} as Record<string, number>)
-                            ).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Belum Ada'
+                            ).sort((a, b) => Number(b[1]) - Number(a[1]))[0]?.[0] || 'Belum Ada'
                           }
                         </p>
                         <p className="text-xs text-slate-400 mt-2">Spot dengan riwayat tangkapan terbanyak</p>
@@ -935,7 +1113,7 @@ export default function App() {
                                 }
                                 return acc;
                               }, {} as Record<string, number>)
-                            ).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Belum Ada Data'
+                            ).sort((a, b) => Number(b[1]) - Number(a[1]))[0]?.[0] || 'Belum Ada Data'
                           }
                         </p>
                         <p className="text-xs text-slate-400 mt-2">Umpan yang paling sering menghasilkan tangkapan</p>
@@ -944,6 +1122,37 @@ export default function App() {
                          <Fish className="text-orange-400" size={24} />
                        </div>
                     </div>
+
+                    {(() => {
+                      const catchByMonth = logs.reduce((acc, log) => {
+                        const parts = log.date.split(' ');
+                        if (parts.length >= 3) {
+                          const month = parts[1] + ' ' + parts[2].replace(',', '');
+                          acc[month] = (acc[month] || 0) + 1;
+                        }
+                        return acc;
+                      }, {} as Record<string, number>);
+
+                      const chartData = Object.entries(catchByMonth)
+                        .map(([month, count]) => ({ month, count }))
+                        .slice(-6);
+
+                      return (
+                        <div className="md:col-span-2 bg-slate-900/40 p-5 sm:p-6 rounded-[2rem] border border-slate-700 mt-4">
+                           <h3 className="text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Grafik Tangkapan Terakhir</h3>
+                           <div className="h-[250px] w-full">
+                             <ResponsiveContainer width="100%" height="100%">
+                               <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                 <XAxis dataKey="month" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
+                                 <YAxis stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} allowDecimals={false} />
+                                 <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', color: '#f8fafc', fontSize: '12px', fontWeight: 'bold' }} itemStyle={{ color: '#2dd4bf' }} />
+                                 <Bar dataKey="count" fill="#14b8a6" radius={[4, 4, 0, 0]} />
+                               </BarChart>
+                             </ResponsiveContainer>
+                           </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
