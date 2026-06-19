@@ -209,10 +209,10 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.25 }}
-              className="grid grid-cols-1 md:grid-cols-12 gap-6 flex-1 min-h-0"
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 flex-1 min-h-0"
             >
               {/* LEFT COLUMN */}
-            <div className="md:col-span-5 lg:col-span-4 flex flex-col gap-6">
+            <div className="lg:col-span-5 flex flex-col gap-6 md:gap-8">
               {/* Location Selector styled as quick select block */}
               <div className="bg-slate-800/50 p-4 md:p-5 rounded-[2rem] border border-slate-700 w-full">
                 <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block">Lokasi Memancing</label>
@@ -304,21 +304,21 @@ export default function App() {
                         <div className="inline-block bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-4 border border-white/20 shadow-inner">
                           <span className="text-sm font-bold text-white">{scoreRec.category}</span>
                         </div>
-                        <div className="text-xs sm:text-[13px] font-medium leading-relaxed text-teal-50 bg-black/10 p-4 rounded-2xl text-left border border-black/5 flex flex-col gap-2 transition-all">
+                        <div className="text-sm leading-relaxed text-slate-200 bg-slate-900/60 p-5 sm:p-6 rounded-[2rem] text-left border border-teal-500/30 flex flex-col gap-3 transition-all mt-4 sm:mt-6 shadow-inner w-full backdrop-blur-sm">
                           <div>
-                            <strong className="text-white block mb-1.5 text-xs uppercase tracking-widest">🔍 Analisa Singkat</strong>
-                            <span className="text-teal-100">{scoreRec.reason.charAt(0).toUpperCase() + scoreRec.reason.slice(1)}.</span>
+                            <strong className="text-teal-300 block mb-2 text-xs uppercase tracking-widest font-black flex items-center gap-1.5"><Info size={16} /> Analisa Singkat</strong>
+                            <span className="text-slate-100 block mt-2 text-[14px] leading-[1.6]">{scoreRec.reason.charAt(0).toUpperCase() + scoreRec.reason.slice(1)}.</span>
                           </div>
                           
                           {isAnalisaExpanded && (
-                            <div className="mt-3 pt-3 border-t border-white/10 text-teal-100/90 text-[11px] sm:text-xs">
+                            <div className="mt-2 pt-4 border-t border-slate-700 text-slate-300 text-[14px] leading-[1.6]">
                                <div className="whitespace-pre-wrap">{scoreRec.verboseRec}</div>
                             </div>
                           )}
                           
                           <button 
                             onClick={() => setIsAnalisaExpanded(!isAnalisaExpanded)}
-                            className="text-white/70 hover:text-white font-bold text-[10px] sm:text-xs uppercase tracking-widest self-center mt-2 flex items-center gap-1 transition-colors"
+                            className="text-xs uppercase font-black tracking-widest text-slate-400 hover:text-teal-300 flex items-center justify-center p-3 mt-2 w-full bg-slate-800/80 rounded-xl transition-colors"
                           >
                             {isAnalisaExpanded ? 'Tutup Analisa' : 'Baca Analisa Penuh'}
                           </button>
@@ -345,7 +345,7 @@ export default function App() {
                          <span className="min-[360px]:hidden">Live</span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
                          <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-amber-500/10 mb-1">
                            <Moon className="text-amber-400 w-4 h-4 sm:w-6 sm:h-6" />
@@ -397,7 +397,7 @@ export default function App() {
             </div>
 
             {/* RIGHT COLUMN (TIDE) */}
-            <div className="md:col-span-7 lg:col-span-8 flex flex-col gap-6">
+            <div className="lg:col-span-7 flex flex-col gap-6 md:gap-8">
                {isLoading ? (
                  <div className="flex-1 min-h-[300px]"></div>
                ) : tide ? (
@@ -407,23 +407,26 @@ export default function App() {
                     <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
                        <Droplets className="text-teal-400" size={16} /> Grafik Pasang Surut
                     </h3>
-                    <div className="flex justify-between items-start mb-6">
+                    <div className="flex justify-between items-start mb-8 gap-4 flex-wrap">
                       <div>
-                        <h2 className="text-3xl sm:text-4xl font-black tracking-tighter">{tide.currentHeight.toFixed(2)}<span className="text-lg text-slate-500 ml-1 font-normal">meters</span></h2>
-                        <p className="text-sm text-teal-400 font-bold uppercase tracking-widest flex items-center gap-2 mt-1 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]">
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter flex items-baseline">
+                          {tide.currentHeight.toFixed(2)}
+                          <span className="text-base lg:text-lg text-slate-400 ml-2 font-normal">meters</span>
+                        </h2>
+                        <p className="text-sm text-teal-400 font-bold uppercase tracking-widest flex items-center gap-2 mt-2 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]">
                           <Droplets className="w-4 h-4" />
                           {tide.status} Sekarang
                         </p>
                       </div>
                       <div className="flex gap-4">
                         <div className="text-center">
-                          <p className="text-[10px] text-slate-500 uppercase font-black">Pasang</p>
+                          <p className="text-[10px] text-white/75 uppercase font-black">Pasang</p>
                           <p className="font-bold text-sm text-white">
                             {tide.nextHighTide ? format(tide.nextHighTide, 'HH:mm') : '-'}
                           </p>
                         </div>
                         <div className="text-center">
-                          <p className="text-[10px] text-slate-500 uppercase font-black">Surut</p>
+                          <p className="text-[10px] text-white/75 uppercase font-black">Surut</p>
                           <p className="font-bold text-sm text-white">
                             {tide.nextLowTide ? format(tide.nextLowTide, 'HH:mm') : '-'}
                           </p>
@@ -431,7 +434,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide mb-4 w-full">
+                    <div className="flex gap-3 overflow-x-auto p-1 pb-3 scrollbar-hide mb-6 w-full">
                       {[
                         { label: 'Kemarin', offset: -1 },
                         { label: 'Hari Ini', offset: 0 },
@@ -467,7 +470,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="text-[10px] text-slate-400 mb-3 italic">ℹ️ Klik area peta untuk merubah lokasi analisis. Info pasang surut dan cuaca difetch ulang otomatis.</div>
-                    <div className="h-[250px] md:h-[350px] w-full relative z-0">
+                    <div className="aspect-video w-full rounded-2xl md:rounded-3xl overflow-hidden shadow-inner border border-slate-700/50 bg-slate-900/50 relative z-0">
                       <LocationMap lat={location.lat} lon={location.lon} name={location.name} onLocationSelect={handleMapClick} />
                     </div>
                   </div>
@@ -479,7 +482,7 @@ export default function App() {
                         <span className="text-amber-400"><Activity size={20} /></span>
                         <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Tabel Solunar Harian</h3>
                       </div>
-                      <div className="text-[9px] md:text-[10px] text-slate-500 uppercase font-black px-3 py-1 bg-slate-900/50 rounded-full border border-slate-700">
+                      <div className="text-[9px] md:text-[10px] text-slate-300 uppercase font-black px-3 py-1 bg-slate-900/50 rounded-full border border-slate-700">
                         {format(displayedDate, 'dd MMM yyyy', { locale: idLocale })}
                       </div>
                     </div>
@@ -495,15 +498,15 @@ export default function App() {
                         </h4>
                         <div className="space-y-4 relative z-10">
                           <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Transit Atas (Bulan di Puncak)</p>
-                            <p className="font-bold text-slate-200">
+                            <p className="text-[10px] text-white/75 uppercase tracking-widest mb-1 font-bold">Transit Atas (Bulan di Puncak)</p>
+                            <p className="font-bold text-slate-100">
                               {solunar.major1 ? `${format(solunar.major1.start, 'HH:mm')} - ${format(solunar.major1.end, 'HH:mm')}` : 'Tidak Ada'}
                             </p>
                           </div>
                           <div className="h-px w-full bg-slate-700/50"></div>
                           <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Transit Bawah (Bulan di Bawah)</p>
-                            <p className="font-bold text-slate-200">
+                            <p className="text-[10px] text-white/75 uppercase tracking-widest mb-1 font-bold">Transit Bawah (Bulan di Bawah)</p>
+                            <p className="font-bold text-slate-100">
                               {solunar.major2 ? `${format(solunar.major2.start, 'HH:mm')} - ${format(solunar.major2.end, 'HH:mm')}` : 'Tidak Ada'}
                             </p>
                           </div>
@@ -520,15 +523,15 @@ export default function App() {
                         </h4>
                         <div className="space-y-4 relative z-10">
                           <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Terbit Bulan (Moonrise)</p>
-                            <p className="font-bold text-slate-200">
+                            <p className="text-[10px] text-white/75 uppercase tracking-widest mb-1 font-bold">Terbit Bulan (Moonrise)</p>
+                            <p className="font-bold text-slate-100">
                               {solunar.minor1 ? `${format(solunar.minor1.start, 'HH:mm')} - ${format(solunar.minor1.end, 'HH:mm')}` : 'Tidak Ada'}
                             </p>
                           </div>
                           <div className="h-px w-full bg-slate-700/50"></div>
                           <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Terbenam Bulan (Moonset)</p>
-                            <p className="font-bold text-slate-200">
+                            <p className="text-[10px] text-white/75 uppercase tracking-widest mb-1 font-bold">Terbenam Bulan (Moonset)</p>
+                            <p className="font-bold text-slate-100">
                               {solunar.minor2 ? `${format(solunar.minor2.start, 'HH:mm')} - ${format(solunar.minor2.end, 'HH:mm')}` : 'Tidak Ada'}
                             </p>
                           </div>
