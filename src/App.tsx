@@ -6,9 +6,10 @@ import { TideChart } from './components/TideChart';
 import { LocationMap } from './components/LocationMap';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass } from 'lucide-react';
+import { MapPin, Droplets, Wind, Moon, Thermometer, Fish, Clock, Info, CheckCircle2, ChevronRight, BookOpen, Plus, Save, X, Compass, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import localforage from 'localforage';
+import { calculateSolunarData, SolunarDayData } from './solunar';
 
 localforage.config({
   name: 'FishingTime',
@@ -23,6 +24,13 @@ export default function App() {
   const [scoreRec, setScoreRec] = useState<{score: number, category: string, reason: string, simpleRec: string, verboseRec: string} | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
+
+  const [now, setNow] = useState(new Date());
+  const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
+  const displayedDate = addDays(now, selectedDateOffset);
+  const solunar = React.useMemo(() => {
+    return calculateSolunarData(displayedDate, location.lat, location.lon);
+  }, [displayedDate.getDate(), displayedDate.getMonth(), location.lat, location.lon]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log'>('dashboard');
   const [isAnalisaExpanded, setIsAnalisaExpanded] = useState(false);
 
@@ -35,8 +43,6 @@ export default function App() {
   const [newLength, setNewLength] = useState('');
   const [newBait, setNewBait] = useState('');
   const [searchLog, setSearchLog] = useState('');
-  const [now, setNow] = useState(new Date());
-  const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const handleMapClick = async (lat: number, lon: number) => {
@@ -160,9 +166,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className="w-full max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 flex-1 pb-32 md:pb-8">
-        {/* Tab Navigation - Bottom on Mobile, Top on Desktop */}
-        <nav className="fixed bottom-0 left-0 right-0 md:sticky md:top-6 bg-slate-900/95 md:bg-transparent backdrop-blur-xl border-t border-slate-700 md:border-none z-50 p-2 sm:p-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-0 md:p-0 md:mb-10 md:flex md:justify-center">
+      <main className="w-full max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 flex-1 pb-8">
+        {/* Tab Navigation */}
+        <nav className="static bg-slate-900/95 md:bg-transparent backdrop-blur-xl border border-slate-700 md:border-none z-50 p-2 sm:p-3 md:pb-0 md:p-0 md:mb-10 flex justify-center rounded-3xl md:rounded-none mb-6">
           <div className="md:bg-slate-800/90 md:backdrop-blur-2xl md:border md:border-slate-600/50 md:p-2 md:rounded-[2.5rem] flex items-center justify-around md:gap-2 md:shadow-2xl">
             <button 
               onClick={() => setActiveTab('dashboard')}
@@ -326,51 +332,52 @@ export default function App() {
                         <span className="text-teal-400"><Fish size={20} /></span>
                         <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Quick Stats</h3>
                       </div>
-                      <div className="text-[9px] md:text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 flex items-center gap-2">
+                      <div className="text-[9px] md:text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
                          <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></div>
-                         Live Data (OpenMeteo)
+                         <span className="hidden min-[360px]:inline">OpenMeteo Data</span>
+                         <span className="min-[360px]:hidden">Live</span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 sm:gap-4">
-                      <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
-                         <div className="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center bg-amber-500/10">
-                           <Moon className="text-amber-400" size={18} />
+                    <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                      <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
+                         <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-amber-500/10 mb-1">
+                           <Moon className="text-amber-400 w-4 h-4 sm:w-6 sm:h-6" />
                          </div>
-                         <div className="min-w-0">
-                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Fase Bulan</p>
-                           <p className="text-sm border-0 font-bold text-slate-200 mt-0.5 truncate">{moonPhase}</p>
-                         </div>
-                      </div>
-                      <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
-                         <div className="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center bg-blue-500/10">
-                           <Droplets className="text-blue-400" size={18} />
-                         </div>
-                         <div className="min-w-0">
-                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Cuaca</p>
-                           <p className="text-sm font-bold text-slate-200 mt-0.5 truncate">{weather.description}</p>
+                         <div className="w-full">
+                           <p className="text-[9px] sm:text-[11px] md:text-xs text-slate-500 font-black uppercase truncate mb-0.5 sm:mb-1">Fase Bulan</p>
+                           <p className="text-[11px] sm:text-sm md:text-base font-bold text-slate-200 leading-tight px-1">{moonPhase}</p>
                          </div>
                       </div>
-                      <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
-                         <div className="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center bg-orange-500/10">
-                           <Thermometer className="text-orange-400" size={18} />
+                      <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
+                         <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-blue-500/10 mb-1">
+                           <Droplets className="text-blue-400 w-4 h-4 sm:w-6 sm:h-6" />
                          </div>
-                         <div className="min-w-0">
-                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Suhu Cuaca</p>
-                           <p className="text-sm font-bold text-slate-200 mt-0.5 truncate">{weather.temperature}°C</p>
+                         <div className="w-full">
+                           <p className="text-[9px] sm:text-[11px] md:text-xs text-slate-500 font-black uppercase truncate mb-0.5 sm:mb-1">Cuaca</p>
+                           <p className="text-[11px] sm:text-sm md:text-base font-bold text-slate-200 leading-tight px-1">{weather.description}</p>
                          </div>
                       </div>
-                      <div className="bg-slate-900/40 p-4 rounded-3xl border border-slate-700 flex items-center gap-3 sm:gap-4">
-                         <div className="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center bg-teal-500/10">
-                           <Wind className="text-teal-400" size={18} />
+                      <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
+                         <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-orange-500/10 mb-1">
+                           <Thermometer className="text-orange-400 w-4 h-4 sm:w-6 sm:h-6" />
                          </div>
-                         <div className="min-w-0">
-                           <p className="text-[10px] md:text-xs text-slate-500 font-black uppercase truncate">Angin</p>
-                           <div className="flex items-center gap-1.5 mt-0.5">
-                             <p className="text-sm font-bold text-slate-200 truncate">{weather.windSpeed} km/h</p>
+                         <div className="w-full">
+                           <p className="text-[9px] sm:text-[11px] md:text-xs text-slate-500 font-black uppercase truncate mb-0.5 sm:mb-1">Suhu Cuaca</p>
+                           <p className="text-[11px] sm:text-sm md:text-base font-bold text-slate-200 leading-tight px-1">{weather.temperature}°C</p>
+                         </div>
+                      </div>
+                      <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
+                         <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-teal-500/10 mb-1">
+                           <Wind className="text-teal-400 w-4 h-4 sm:w-6 sm:h-6" />
+                         </div>
+                         <div className="w-full flex flex-col items-center">
+                           <p className="text-[9px] sm:text-[11px] md:text-xs text-slate-500 font-black uppercase truncate mb-0.5 sm:mb-1">Angin</p>
+                           <div className="flex flex-col items-center gap-1">
+                             <p className="text-[11px] sm:text-sm md:text-base font-bold text-slate-200 leading-tight">{weather.windSpeed} km/h</p>
                              {weather.windDirectionLabel && (
-                               <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                 <Compass size={10} style={{ transform: `rotate(${weather.windDirectionDeg || 0}deg)` }} />
-                                 {weather.windDirectionLabel}
+                               <span className="text-[8px] sm:text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 mt-0.5">
+                                 <Compass size={10} className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ transform: `rotate(${weather.windDirectionDeg || 0}deg)` }} />
+                                 <span className="truncate max-w-[50px] sm:max-w-none">{weather.windDirectionLabel}</span>
                                </span>
                              )}
                            </div>
@@ -455,6 +462,71 @@ export default function App() {
                     <div className="text-[10px] text-slate-400 mb-3 italic">ℹ️ Klik area peta untuk merubah lokasi analisis. Info pasang surut dan cuaca difetch ulang otomatis.</div>
                     <div className="h-[250px] md:h-[350px] w-full relative z-0">
                       <LocationMap lat={location.lat} lon={location.lon} name={location.name} onLocationSelect={handleMapClick} />
+                    </div>
+                  </div>
+
+                  {/* Solunar Details Table */}
+                  <div className="bg-slate-800/30 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700/50">
+                    <div className="flex justify-between items-center mb-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-400"><Activity size={20} /></span>
+                        <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Tabel Solunar Harian</h3>
+                      </div>
+                      <div className="text-[9px] md:text-[10px] text-slate-500 uppercase font-black px-3 py-1 bg-slate-900/50 rounded-full border border-slate-700">
+                        {format(displayedDate, 'dd MMM yyyy', { locale: idLocale })}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Major Periods */}
+                      <div className="bg-slate-800/50 p-4 rounded-[1.5rem] border border-slate-700 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-5">
+                          <Activity size={80} />
+                        </div>
+                        <h4 className="text-xs font-black text-amber-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-400"></span> Waktu Utama (Major)
+                        </h4>
+                        <div className="space-y-4 relative z-10">
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Transit Atas (Bulan di Puncak)</p>
+                            <p className="font-bold text-slate-200">
+                              {solunar.major1 ? `${format(solunar.major1.start, 'HH:mm')} - ${format(solunar.major1.end, 'HH:mm')}` : 'Tidak Ada'}
+                            </p>
+                          </div>
+                          <div className="h-px w-full bg-slate-700/50"></div>
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Transit Bawah (Bulan di Bawah)</p>
+                            <p className="font-bold text-slate-200">
+                              {solunar.major2 ? `${format(solunar.major2.start, 'HH:mm')} - ${format(solunar.major2.end, 'HH:mm')}` : 'Tidak Ada'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Minor Periods */}
+                      <div className="bg-slate-800/50 p-4 rounded-[1.5rem] border border-slate-700 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-5">
+                          <Moon size={80} />
+                        </div>
+                        <h4 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-400"></span> Waktu Minor
+                        </h4>
+                        <div className="space-y-4 relative z-10">
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Terbit Bulan (Moonrise)</p>
+                            <p className="font-bold text-slate-200">
+                              {solunar.minor1 ? `${format(solunar.minor1.start, 'HH:mm')} - ${format(solunar.minor1.end, 'HH:mm')}` : 'Tidak Ada'}
+                            </p>
+                          </div>
+                          <div className="h-px w-full bg-slate-700/50"></div>
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Terbenam Bulan (Moonset)</p>
+                            <p className="font-bold text-slate-200">
+                              {solunar.minor2 ? `${format(solunar.minor2.start, 'HH:mm')} - ${format(solunar.minor2.end, 'HH:mm')}` : 'Tidak Ada'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                  </>
