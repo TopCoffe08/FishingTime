@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as SunCalc from 'suncalc';
-import { TidePrediction, WeatherCondition, TideData, BMKGTideInfo } from './types';
+import { TidePrediction, WeatherCondition, TideData, BMKGTideInfo, AnalysisResult, AnalysisFactor } from './types';
 import { format, addHours, startOfHour } from 'date-fns';
 
 export const BMKG_ATTRIBUTION = 'Sumber data pasang surut: BMKG';
@@ -462,59 +462,148 @@ export async function fetchRecommendation(params: {
   const secondaryReason = reasonParts[1] ? `, dan ${reasonParts[1]}` : "";
   const simpleRec = `Apakah sekarang waktu yang tepat untuk memancing di ${timeStr} hari ini?\nSkor: ${score}/100 (${category})\nAlasan Utama: ${primaryReason}${secondaryReason}.`;
   
-  // Verbose recommendation
-  let rec = `===== Analisa Memancing Komprehensif: ${params.location} =====\n\n`;
-  rec += `🕒 Waktu: ${params.timeOfDay} (${timeStr.toUpperCase()})\n`;
-  rec += `🌤️ Cuaca: ${params.weatherData.description} (${temp}°C), Angin ${wind} km/h\n`;
-  rec += `🌊 Pasang Surut: ${status} pada level ${params.tideData.currentHeight.toFixed(2)}m\n`;
-  rec += `🌙 Fase Bulan: ${params.moonPhaseStr}\n`;
-  if (params.tideData.dataSource === 'bmkg') {
-    rec += `📊 Sumber Data Pasang Surut: BMKG Resmi Nasional\n`;
-  } else if (params.tideData.dataSource === 'marine-api') {
-    rec += `📊 Sumber Data Pasang Surut: Kalkulasi Gelombang Laut Global (Open-Meteo)\n`;
-  } else {
-    rec += `📊 Sumber Data Pasang Surut: Estimasi Simulasi Sinkronisasi Solunar (Kurang Akurat)\n`;
-  }
-  rec += `🎯 Skor Potensi Tangkapan: ${score}/100\n\n`;
+  let sourceLabel = "Estimasi Simulasi Sinkronisasi Solunar (Kurang Akurat)";
+  if (params.tideData.dataSource === 'bmkg') sourceLabel = "BMKG Resmi Nasional";
+  else if (params.tideData.dataSource === 'marine-api') sourceLabel = "Kalkulasi Gelombang Laut Global (Open-Meteo)";
 
-  rec += `📝 **Rekomendasi Rinci:**\n`;
-  
+  const factors: AnalysisFactor[] = [];
+
+  // Tide reasoning
   if (isRising) {
-    rec += `• **Kondisi Air:** Air sedang pasang naik. Ini adalah waktu emas (golden hours). Pergerakan air membawa masuk pakan alami ke wilayah dangkal dan muara. Ikan target besar biasanya aktif menyergap mangsa.\n\n`;
+    factors.push({
+      title: "Kondisi Air (Pasang Naik)",
+      description: "Ini adalah waktu emas (golden hours). Pergerakan air membawa masuk pakan alami ke wilayah dangkal dan muara. Ikan target besar biasanya aktif menyergap mangsa.",
+      icon: "water"
+    });
   } else if (isFalling) {
-    rec += `• **Kondisi Air:** Pada saat air surut turun, ikan bermigrasi kembali menuju ke posisi yang lebih dalam (palung/drop off). Targetkan titik-titik tersebut atau mulut muara (estuary).\n\n`;
+    factors.push({
+      title: "Kondisi Air (Pasang Turun)",
+      description: "Saat air surut turun, ikan bermigrasi kembali menuju ke posisi yang lebih dalam (palung/drop off). Targetkan titik-titik tersebut atau mulut muara (estuary).",
+      icon: "water"
+    });
   } else if (isPeak) {
-    rec += `• **Kondisi Air:** Air masuk fase pasang puncak (Tenang). Ikan mungkin mengurangi intensitas makan karena ketiadaan arus. Teknik mancing dasar dengan umpan atraktif disarankan.\n\n`;
+    factors.push({
+      title: "Kondisi Air (Pasang Puncak)",
+      description: "Air masuk fase pasang puncak (Tenang). Ikan mungkin mengurangi intensitas makan karena ketiadaan arus. Teknik mancing dasar dengan umpan atraktif disarankan.",
+      icon: "water"
+    });
   } else if (isLow) {
-    rec += `• **Kondisi Air:** Air surut terendah (Tenang). Air surut maksimal biasanya membuat perairan muara keruh. Ikan berkumpul di luar batas drop off perairan dalam.\n\n`;
+    factors.push({
+      title: "Kondisi Air (Surut Terendah)",
+      description: "Air surut terendah (Tenang). Air surut maksimal biasanya membuat perairan muara keruh. Ikan berkumpul di luar batas drop off perairan dalam.",
+      icon: "water"
+    });
   } else {
-    rec += `• **Kondisi Air:** Jika arus terpantau lambat atau stagnan (neap tide), ikan akan lebih cenderung diam (pasif). Disarankan menggunakan umpan hidup dan bermain teknik dasar (bottom fishing) yang sangat lambat.\n\n`;
+    factors.push({
+      title: "Kondisi Air (Stagnan)",
+      description: "Jika arus terpantau lambat (neap tide), ikan akan cenderung diam (pasif). Disarankan menggunakan umpan hidup dan teknik dasar (bottom fishing) yang lambat.",
+      icon: "water"
+    });
   }
 
+  // Time reasoning
   if (timeStr === "pagi" || timeStr === "sore") {
-    rec += `• **Faktor Waktu:** Secara biologis, ikan sangat aktif di ${timeStr} hari. Waktu ini berpapasan dengan intensitas matahari rendah, membuat ikan berani mendekati permukaan. Teknik casting sangat disarankan.\n\n`;
+    factors.push({
+      title: "Faktor Waktu: Feeding Frenzy",
+      description: `Secara biologis, ikan sangat aktif di ${timeStr} hari. Waktu ini berpapasan dengan intensitas matahari rendah, memicu ikan mendekati permukaan. Teknik casting sangat disarankan.`,
+      icon: "clock"
+    });
   } else if (timeStr === "malam") {
-    rec += `• **Faktor Waktu:** Malam hari bagus untuk target tertentu (seperti Kakap Merah, Kerapu, atau Cumi jika perairan terang). Jika fase bulan adalah Bulan Terang, predator visual sangat mendominasi!\n\n`;
+    factors.push({
+      title: "Faktor Waktu: Nokturnal",
+      description: "Malam hari bagus untuk target dasar (Kakap Merah, Kerapu) atau Cumi-cumi jika perairan terang.",
+      icon: "clock"
+    });
   } else {
-    rec += `• **Faktor Waktu:** Pada siang bolong, sinar UV panas menembus ke dalam membuat ikan berlindung di bawah struktur (karang, rumpon, bakau) atau di kedalaman. Fokuskan lemparan umpan dekat struktur dengan pelindung.\n\n`;
+    factors.push({
+      title: "Faktor Waktu: Siang Bolong",
+      description: "Sinar UV panas menembus ke dalam membuat ikan berlindung di bawah struktur (karang, rumpon, bakau) atau di kedalaman. Fokuskan lemparan umpan dekat struktur.",
+      icon: "clock"
+    });
+  }
+
+  // Weather reasoning
+  if (desc.includes('hujan') && !desc.includes('petir') && !desc.includes('badai')) {
+    factors.push({
+      title: "Kondisi Cuaca (Gerimis/Hujan)",
+      description: "Bagus untuk menyamarkan visibilitas bayangan pemancing, menambah suplai oksigen terlarut, dan menetralkan suhu permukaan air.",
+      icon: "cloud"
+    });
+  } else if (desc.includes('badai') || desc.includes('petir') || wind > 30) {
+    factors.push({
+      title: "Kondisi Cuaca BURUK (Bahaya)",
+      description: "PERINGATAN: Berpotensi membahayakan keselamatan. Tekanan udara drastis memang dapat membuat ikan agresif, namun sangat tidak disarankan untuk melaut.",
+      icon: "cloud"
+    });
+  } else if (temp > 32) {
+    factors.push({
+      title: "Suhu Permukaan Cukup Panas",
+      description: "Ikan akan turun ke tempat yang lebih dalam (thermocline). Gunakan umpan dasar atau deep diver lure.",
+      icon: "cloud"
+    });
+  } else {
+    factors.push({
+      title: "Cuaca Bersahabat",
+      description: "Cuaca stabil sangat mendukung visibilitas bawah air dan menstabilkan tekanan udara, memperbesar keberhasilan strike.",
+      icon: "cloud"
+    });
+  }
+
+  // Moon phase reasoning
+  if (moonPhaseVal > 0.45 && moonPhaseVal < 0.55) {
+    factors.push({
+      title: "Fase Bulan Purnama",
+      description: "Gravitasi maksimal bulan memicu pasang surut yang signifikan dan insting berburu malam hari (nokturnal) yang dahsyat.",
+      icon: "moon"
+    });
+  } else if (moonPhaseVal >= 0.95 || moonPhaseVal <= 0.05) {
+    factors.push({
+      title: "Fase Bulan Mati (New Moon)",
+      description: "Bulan gelap total memicu arus pasang surut (Spring Tide) yang kuat, sangat direkomendasikan untuk target pelagis besar.",
+      icon: "moon"
+    });
   }
 
   if (wind > 20) {
-    rec += `• **Saran Tambahan:** Angin kencang (${wind} km/h) bisa membuat riak ombak menyulitkan. Tetap berhati-hati dan pastikan Anda mencari spot terlindung dari arah angin (Leeward)!\n\n`;
+    factors.push({
+      title: "Peringatan Angin Kencang",
+      description: `Angin cukup kuat (${wind} km/h) bisa menimbulkan hempasan ombak menyulitkan. Tetap berhati-hati dan cari spot terlindung dari arah angin (Leeward)!`,
+      icon: "cloud"
+    });
   }
 
+  // Catch history pattern
   if (params.logs && params.logs.length > 0) {
     const locationLogs = params.logs.filter(l => l.location === params.location);
     if (locationLogs.length > 0) {
-      rec += `• **Insight Jurnal:** Berdasarkan ${locationLogs.length} trip Anda sebelumnya di spot ini, kondisi yang ada memvalidasi keberhasilan historis Anda.`;
+      factors.push({
+        title: "Pola Tangkapan Historis",
+        description: `Berdasarkan ${locationLogs.length} trip Anda sebelumnya di spot ini, kondisi yang ada memvalidasi keberhasilan historis Anda.`,
+        icon: "history"
+      });
     }
   }
+
+  let conclusion = "";
+  if (score >= 80) conclusion = "Kondisi sangat sempurna. Bersiaplah untuk sesi yang intens, targetkan ikan-ikan monster di area arus utama atau struktur potensial.";
+  else if (score >= 60) conclusion = "Kondisi ideal. Perlu sedikit variasi dan eksplorasi titik potensial di perairan. Pastikan membawa umpan jenis cadangan.";
+  else if (score >= 40) conclusion = "Kondisi 'Menunggu'. Ikan cenderung bersembunyi atau pasif. Saran: Bermain sangat sabar di kedalaman, gunakan umpan alami beraroma kuat.";
+  else conclusion = "Kondisi sangat sulit. Sangat disarankan untuk beristirahat atau menyiapkan strategi jika memaksakan diri pergi.";
 
   return {
     score,
     category,
     reason: reasonParts.join('; '),
     simpleRec,
-    verboseRec: rec
+    overview: {
+      location: params.location,
+      timeStr: `${params.timeOfDay} (${timeStr.toUpperCase()})`,
+      weather: `${params.weatherData.description} (${temp}°C), Angin ${wind} km/h`,
+      tide: `${status} pada level ${params.tideData.currentHeight.toFixed(2)}m`,
+      moon: params.moonPhaseStr,
+      dataSource: sourceLabel
+    },
+    factors,
+    conclusion
   };
 }

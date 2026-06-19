@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchTideAndWeather, fetchRecommendation } from './api';
 import { PRESET_LOCATIONS, SPECIES_DB } from './data';
-import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord } from './types';
+import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord, AnalysisResult } from './types';
 import { TideChart } from './components/TideChart';
 import { LocationMap } from './components/LocationMap';
 import { format, addDays } from 'date-fns';
@@ -40,7 +40,7 @@ export default function App() {
   const [tide, setTide] = useState<TidePrediction | null>(null);
   const [weather, setWeather] = useState<WeatherCondition | null>(null);
   const [moonPhase, setMoonPhase] = useState<string>('');
-  const [scoreRec, setScoreRec] = useState<{score: number, category: string, reason: string, simpleRec: string, verboseRec: string} | null>(null);
+  const [scoreRec, setScoreRec] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -449,8 +449,29 @@ export default function App() {
                           </div>
                           
                           {isAnalisaExpanded && (
-                            <div className="mt-2 pt-4 border-t border-slate-700 text-slate-300 text-[14px] leading-[1.6]">
-                               <div className="whitespace-pre-wrap">{scoreRec.verboseRec}</div>
+                            <div className="mt-2 pt-4 border-t border-slate-700/50 flex flex-col gap-5 text-slate-300 text-[14px] leading-[1.6]">
+                              <div className="grid gap-4">
+                                {scoreRec.factors.map((factor, idx) => (
+                                  <div key={idx} className="bg-slate-800/80 p-4 rounded-[1.5rem] border border-slate-700/50">
+                                    <strong className="text-white block mb-1 text-sm font-bold flex items-center gap-2">
+                                      {factor.icon === 'water' && <Droplets size={16} className="text-blue-400" />}
+                                      {factor.icon === 'moon' && <Moon size={16} className="text-purple-400" />}
+                                      {factor.icon === 'cloud' && <Wind size={16} className="text-slate-400" />}
+                                      {factor.icon === 'clock' && <Clock size={16} className="text-amber-400" />}
+                                      {factor.icon === 'history' && <Activity size={16} className="text-emerald-400" />}
+                                      {factor.title}
+                                    </strong>
+                                    <span className="text-slate-300 text-[13px] leading-relaxed block">{factor.description}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="bg-teal-500/10 p-5 rounded-[1.5rem] border border-teal-500/30">
+                                <strong className="text-teal-400 block mb-2 text-xs uppercase tracking-widest font-black">Kesimpulan & Strategi</strong>
+                                <span className="text-teal-50/90 text-sm leading-relaxed block">{scoreRec.conclusion}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 italic mt-2 flex flex-col gap-1">
+                                <span>Sumber pasang surut: {scoreRec.overview.dataSource}</span>
+                              </div>
                             </div>
                           )}
                           

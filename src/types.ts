@@ -77,3 +77,26 @@ export interface CatchRecord {
   weatherCondition?: string;
   tideCondition?: string;
 }
+
+export interface AnalysisFactor {
+  title: string;
+  description: string;
+  icon: 'water' | 'moon' | 'cloud' | 'clock' | 'history';
+}
+
+export interface AnalysisResult {
+  score: number;
+  category: string;
+  reason: string;
+  simpleRec: string;
+  overview: {
+    location: string;
+    timeStr: string;
+    weather: string;
+    tide: string;
+    moon: string;
+    dataSource: string;
+  };
+  factors: AnalysisFactor[];
+  conclusion: string;
+}
