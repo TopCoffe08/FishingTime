@@ -50,6 +50,15 @@ export default function App() {
   const solunar = React.useMemo(() => {
     return calculateSolunarData(displayedDate, location.lat, location.lon);
   }, [displayedDate.getDate(), displayedDate.getMonth(), location.lat, location.lon]);
+  
+  const recommendedSpecies = React.useMemo(() => {
+    const exactMatches = SPECIES_DB.filter(s => s.locations?.includes(location.name));
+    if (exactMatches.length > 0) return exactMatches;
+    let fallbackType = location.type;
+    if (fallbackType === 'Perairan/GPS' || fallbackType === 'Custom') fallbackType = 'Laut';
+    return SPECIES_DB.filter(s => s.habitat.includes(fallbackType));
+  }, [location.name, location.type]);
+  
   const [activeTab, setActiveTab] = useState<'dashboard' | 'species' | 'log' | 'evaluasi'>('dashboard');
   const [isAnalisaExpanded, setIsAnalisaExpanded] = useState(false);
 
@@ -776,7 +785,7 @@ export default function App() {
             <div className="bg-slate-800/30 p-6 rounded-[2.5rem] border border-slate-700/50">
               <h2 className="text-sm font-black uppercase tracking-widest text-white mb-6">Database Spesies di Lokasi Ini</h2>
               <div className="grid gap-4">
-                {SPECIES_DB.filter(s => s.locations ? s.locations.includes(location.name) : s.habitat.includes(location.type)).map(s => (
+                {recommendedSpecies.map(s => (
                   <div key={s.id} className="bg-slate-800/50 p-4 rounded-3xl border border-slate-700 flex flex-col md:flex-row gap-4 md:items-center">
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-14 h-14 bg-teal-500/20 rounded-2xl flex items-center justify-center text-3xl font-bold border border-teal-500/30">
@@ -799,7 +808,7 @@ export default function App() {
                     </div>
                   </div>
                 ))}
-                {SPECIES_DB.filter(s => s.locations ? s.locations.includes(location.name) : s.habitat.includes(location.type)).length === 0 && (
+                {recommendedSpecies.length === 0 && (
                   <div className="text-slate-500 py-12 text-center bg-slate-900/40 rounded-3xl border border-slate-700 border-dashed">
                     <p className="font-bold text-sm uppercase tracking-widest">Tidak ada data spesies</p>
                   </div>
