@@ -13,6 +13,9 @@ export interface FishingLocation {
   lon: number;
   bmkgCode?: string | null;
   bmkgSlug?: string | null;
+  targets?: string;
+  conditions?: string;
+  bait?: string;
 }
 
 export interface TideData {
@@ -52,8 +55,9 @@ export interface WeatherCondition {
 export interface FishSpecies {
   id: string;
   name: string;
-  type: 'Ikan' | 'Udang';
+  type: 'Ikan' | 'Udang' | 'Cumi' | 'Kepiting';
   habitat: string[];
+  locations?: string[]; 
   activePhase: string[]; // e.g. "Pasang Naik", "Surut"
   bait: string;
   technique: string;

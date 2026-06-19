@@ -745,7 +745,7 @@ export default function App() {
             <div className="bg-slate-800/30 p-6 rounded-[2.5rem] border border-slate-700/50">
               <h2 className="text-sm font-black uppercase tracking-widest text-white mb-6">Daftar Rekomendasi ({location.type})</h2>
               <div className="grid gap-4">
-                {SPECIES_DB.filter(s => s.habitat.includes(location.type)).map(s => (
+                {SPECIES_DB.filter(s => s.locations ? s.locations.includes(location.name) : s.habitat.includes(location.type)).map(s => (
                   <div key={s.id} className="bg-slate-800/50 p-4 rounded-3xl border border-slate-700 flex flex-col md:flex-row gap-4 md:items-center">
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-14 h-14 bg-teal-500/20 rounded-2xl flex items-center justify-center text-3xl font-bold border border-teal-500/30">
@@ -768,7 +768,7 @@ export default function App() {
                     </div>
                   </div>
                 ))}
-                {SPECIES_DB.filter(s => s.habitat.includes(location.type)).length === 0 && (
+                {SPECIES_DB.filter(s => s.locations ? s.locations.includes(location.name) : s.habitat.includes(location.type)).length === 0 && (
                   <div className="text-slate-500 py-12 text-center bg-slate-900/40 rounded-3xl border border-slate-700 border-dashed">
                     <p className="font-bold text-sm uppercase tracking-widest">Tidak ada data spesies</p>
                   </div>
