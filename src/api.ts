@@ -278,17 +278,30 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
     }
 
     // Determine current status
-    const currentHour = startOfHour(now);
-    let currentIndex = hourlyData.findIndex(d => d.time.getTime() === currentHour.getTime());
-    if (currentIndex === -1) currentIndex = 0; // Fallback to first element if exact time matches fail
+    let currentIndex = 0;
+    let minDiff = Infinity;
+    for (let i = 0; i < hourlyData.length; i++) {
+       const diff = Math.abs(hourlyData[i].time.getTime() - now.getTime());
+       if (diff < minDiff) {
+         minDiff = diff;
+         currentIndex = i;
+       }
+    }
     
     let status: TidePrediction['status'] = "Pasang Naik";
     if (currentIndex >= 0 && currentIndex < hourlyData.length - 1) {
        currentHeight = hourlyData[currentIndex].height;
        const nextHeight = hourlyData[currentIndex+1].height;
-       status = nextHeight > currentHeight ? "Pasang Naik" : "Pasang Turun";
+       if (nextHeight > currentHeight + 0.02) {
+         status = "Pasang Naik";
+       } else if (nextHeight < currentHeight - 0.02) {
+         status = "Pasang Turun";
+       } else {
+         // Sangat kecil perubahannya, anggap sedang di puncak (high tide) atau lembah (low tide)
+         status = currentHeight > (hourlyData.reduce((acc, d) => acc + d.height, 0) / hourlyData.length) ? "Pasang Puncak" : "Surut";
+       }
     } else if (hourlyData.length > 0) {
-       currentHeight = hourlyData[0].height;
+       currentHeight = hourlyData[hourlyData.length - 1].height;
     }
 
     // Find next high/low
@@ -350,6 +363,8 @@ export async function fetchRecommendation(params: {
   const status = params.tideData.status;
   const isRising = status === 'Pasang Naik';
   const isFalling = status === 'Pasang Turun';
+  const isPeak = status === 'Pasang Puncak';
+  const isLow = status === 'Surut';
   
   if (isRising) {
     score += 25;
@@ -357,6 +372,12 @@ export async function fetchRecommendation(params: {
   } else if (isFalling) {
     score += 15;
     reasonParts.push("arus surut membawa nutrien kembali ke perairan yang lebih dalam, ideal untuk mancing di area dasar / muara");
+  } else if (isPeak) {
+    score += 5;
+    reasonParts.push("air sedang pasang puncak (stagnan sejenak), aktivitas ikan cenderung pasif");
+  } else if (isLow) {
+    score += 5;
+    reasonParts.push("air sedang surut terendah (stagnan), ikan umumnya menjauhi perairan dangkal");
   } else {
     reasonParts.push("pergerakan arus laut stabil yang mungkin membuat ikan kurang aktif bergerak");
   }
@@ -437,7 +458,9 @@ export async function fetchRecommendation(params: {
   else category = "Kurang Ideal 🌧️";
 
   // Create simple recommendation
-  const simpleRec = `Apakah sekarang waktu yang tepat untuk memancing di ${timeStr} hari ini?\nSkor: ${score}/100 (${category})\nAlasan Utama: ${reasonParts[0].charAt(0).toUpperCase() + reasonParts[0].slice(1)}, dan ${reasonParts[1]}.`;
+  const primaryReason = reasonParts[0] ? reasonParts[0].charAt(0).toUpperCase() + reasonParts[0].slice(1) : "Kondisi standar";
+  const secondaryReason = reasonParts[1] ? `, dan ${reasonParts[1]}` : "";
+  const simpleRec = `Apakah sekarang waktu yang tepat untuk memancing di ${timeStr} hari ini?\nSkor: ${score}/100 (${category})\nAlasan Utama: ${primaryReason}${secondaryReason}.`;
   
   // Verbose recommendation
   let rec = `===== Analisa Memancing Komprehensif: ${params.location} =====\n\n`;
@@ -445,6 +468,13 @@ export async function fetchRecommendation(params: {
   rec += `🌤️ Cuaca: ${params.weatherData.description} (${temp}°C), Angin ${wind} km/h\n`;
   rec += `🌊 Pasang Surut: ${status} pada level ${params.tideData.currentHeight.toFixed(2)}m\n`;
   rec += `🌙 Fase Bulan: ${params.moonPhaseStr}\n`;
+  if (params.tideData.dataSource === 'bmkg') {
+    rec += `📊 Sumber Data Pasang Surut: BMKG Resmi Nasional\n`;
+  } else if (params.tideData.dataSource === 'marine-api') {
+    rec += `📊 Sumber Data Pasang Surut: Kalkulasi Gelombang Laut Global (Open-Meteo)\n`;
+  } else {
+    rec += `📊 Sumber Data Pasang Surut: Estimasi Simulasi Sinkronisasi Solunar (Kurang Akurat)\n`;
+  }
   rec += `🎯 Skor Potensi Tangkapan: ${score}/100\n\n`;
 
   rec += `📝 **Rekomendasi Rinci:**\n`;
@@ -453,6 +483,10 @@ export async function fetchRecommendation(params: {
     rec += `• **Kondisi Air:** Air sedang pasang naik. Ini adalah waktu emas (golden hours). Pergerakan air membawa masuk pakan alami ke wilayah dangkal dan muara. Ikan target besar biasanya aktif menyergap mangsa.\n\n`;
   } else if (isFalling) {
     rec += `• **Kondisi Air:** Pada saat air surut turun, ikan bermigrasi kembali menuju ke posisi yang lebih dalam (palung/drop off). Targetkan titik-titik tersebut atau mulut muara (estuary).\n\n`;
+  } else if (isPeak) {
+    rec += `• **Kondisi Air:** Air masuk fase pasang puncak (Tenang). Ikan mungkin mengurangi intensitas makan karena ketiadaan arus. Teknik mancing dasar dengan umpan atraktif disarankan.\n\n`;
+  } else if (isLow) {
+    rec += `• **Kondisi Air:** Air surut terendah (Tenang). Air surut maksimal biasanya membuat perairan muara keruh. Ikan berkumpul di luar batas drop off perairan dalam.\n\n`;
   } else {
     rec += `• **Kondisi Air:** Jika arus terpantau lambat atau stagnan (neap tide), ikan akan lebih cenderung diam (pasif). Disarankan menggunakan umpan hidup dan bermain teknik dasar (bottom fishing) yang sangat lambat.\n\n`;
   }
