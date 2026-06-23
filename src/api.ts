@@ -5,10 +5,11 @@ import { format, addHours, startOfHour } from 'date-fns';
 
 export const BMKG_ATTRIBUTION = 'Sumber data pasang surut: BMKG';
 const BMKG_PUBLIC_API = 'https://peta-maritim.bmkg.go.id/public_api/pelabuhan';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 export async function fetchBMKGTide(bmkgCode: string): Promise<BMKGTideInfo | null> {
   try {
-    const res = await axios.get(BMKG_PUBLIC_API, {
+    const res = await axios.get(`${CORS_PROXY}${encodeURIComponent(BMKG_PUBLIC_API)}`, {
       timeout: 10000
     });
 
@@ -115,7 +116,7 @@ function generateFallbackSineWave(moonPhase: number, baseTime: Date): TideData[]
 
 export async function fetchBMKGWeather(lat: number, lon: number): Promise<WeatherCondition | null> {
   try {
-    const url = `https://api-apps.bmkg.go.id/api/cuaca?lon=${lon}&lat=${lat}`;
+    const url = `${CORS_PROXY}${encodeURIComponent(`https://api-apps.bmkg.go.id/api/cuaca?lon=${lon}&lat=${lat}`)}`;
     const res = await axios.get(url, { timeout: 10000 });
     
     if (res.data && res.data.data && res.data.data.length > 0 && res.data.data[0].cuaca) {
@@ -179,7 +180,7 @@ let cachedBMKGPorts: any[] | null = null;
 async function getAllBMKGPorts(): Promise<any[]> {
   if (cachedBMKGPorts) return cachedBMKGPorts;
   try {
-    const res = await axios.get(BMKG_PUBLIC_API, { timeout: 10000 });
+    const res = await axios.get(`${CORS_PROXY}${encodeURIComponent(BMKG_PUBLIC_API)}`, { timeout: 10000 });
     if (res.data) {
       cachedBMKGPorts = Array.isArray(res.data) ? res.data : Object.values(res.data);
       return cachedBMKGPorts || [];

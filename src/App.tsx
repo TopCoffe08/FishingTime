@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchTideAndWeather, fetchRecommendation } from './api';
 import { PRESET_LOCATIONS, SPECIES_DB } from './data';
-import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord, AnalysisResult } from './types';
-import { TideChart } from './components/TideChart';
-import { LocationMap } from './components/LocationMap';
+import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord, AnalysisResult, TideData } from './types';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { MapPin, Droplets, BookOpen, Fish, TrendingUp } from 'lucide-react';

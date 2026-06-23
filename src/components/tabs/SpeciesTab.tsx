@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Fish, Droplets, Info, CheckCircle2 } from 'lucide-react';
-import { FishingLocation, SpeciesInfo } from '../../types';
+import { FishingLocation, FishSpecies } from '../../types';
 
 interface SpeciesTabProps {
   location: FishingLocation;
-  recommendedSpecies: SpeciesInfo[];
+  recommendedSpecies: FishSpecies[];
 }
 
 export const SpeciesTab: React.FC<SpeciesTabProps> = ({ location, recommendedSpecies }) => {

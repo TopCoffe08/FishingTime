@@ -9,7 +9,11 @@ import { id as idLocale } from 'date-fns/locale';
 
 import { LocationMap } from '../LocationMap';
 import { TideChart } from '../TideChart';
-import { FishingLocation, TidePrediction, WeatherCondition, ScoreRecommendation } from '../../types';
+import { FishingScoreCard } from '../FishingScoreCard';
+import { WeatherCard } from '../WeatherCard';
+import { SolunarTable } from '../SolunarTable';
+import { FutureTideSummary } from '../FutureTideSummary';
+import { FishingLocation, TidePrediction, WeatherCondition, AnalysisResult } from '../../types';
 import { PRESET_LOCATIONS } from '../../data';
 
 interface DashboardTabProps {
@@ -26,7 +30,7 @@ interface DashboardTabProps {
   tide: TidePrediction | null;
   weather: WeatherCondition | null;
   moonPhase: string;
-  scoreRec: ScoreRecommendation | null;
+  scoreRec: AnalysisResult | null;
   isAnalisaExpanded: boolean;
   setIsAnalisaExpanded: (val: boolean) => void;
   isOnline: boolean;
@@ -182,129 +186,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </div>
         ) : tide && weather ? (
           <>
-            <div className="bg-gradient-to-br from-teal-600 to-emerald-600 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-center items-center text-center">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-4 text-teal-100 flex items-center gap-2">
-                  <CheckCircle2 size={16} /> Skor Memancing
-              </h3>
-              {scoreRec ? (
-                <div className="relative z-10 w-full">
-                  <div className="flex items-end justify-center gap-1 mb-2">
-                    <span className="text-5xl sm:text-6xl font-black text-white tracking-tighter">{scoreRec.score}</span>
-                    <span className="text-lg font-bold text-teal-200 mb-2">/100</span>
-                  </div>
-                  <div className="inline-block bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-4 border border-white/20 shadow-inner">
-                    <span className="text-sm font-bold text-white">{scoreRec.category}</span>
-                  </div>
-                  <div className="text-sm leading-relaxed text-slate-200 bg-slate-900/60 p-5 sm:p-6 rounded-[2rem] text-left border border-teal-500/30 flex flex-col gap-3 transition-all mt-4 sm:mt-6 shadow-inner w-full backdrop-blur-sm">
-                    <div>
-                      <strong className="text-teal-300 block mb-2 text-xs uppercase tracking-widest font-black flex items-center gap-1.5"><Info size={16} /> Analisa Singkat</strong>
-                      <span className="text-slate-100 block mt-2 text-[14px] leading-[1.6]">{scoreRec.reason.charAt(0).toUpperCase() + scoreRec.reason.slice(1)}.</span>
-                    </div>
-                    
-                    {isAnalisaExpanded && (
-                      <div className="mt-2 pt-4 border-t border-slate-700/50 flex flex-col gap-5 text-slate-300 text-[14px] leading-[1.6]">
-                        <div className="grid gap-4">
-                          {scoreRec.factors.map((factor, idx) => (
-                            <div key={idx} className="bg-slate-800/80 p-4 rounded-[1.5rem] border border-slate-700/50">
-                              <strong className="text-white block mb-1 text-sm font-bold flex items-center gap-2">
-                                {factor.icon === 'water' && <Droplets size={16} className="text-blue-400" />}
-                                {factor.icon === 'moon' && <Moon size={16} className="text-purple-400" />}
-                                {factor.icon === 'cloud' && <Wind size={16} className="text-slate-400" />}
-                                {factor.icon === 'clock' && <Clock size={16} className="text-amber-400" />}
-                                {factor.icon === 'history' && <Activity size={16} className="text-emerald-400" />}
-                                {factor.title}
-                              </strong>
-                              <span className="text-slate-300 text-[13px] leading-relaxed block">{factor.description}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="bg-teal-500/10 p-5 rounded-[1.5rem] border border-teal-500/30">
-                          <strong className="text-teal-400 block mb-2 text-xs uppercase tracking-widest font-black">Kesimpulan & Strategi</strong>
-                          <span className="text-teal-50/90 text-sm leading-relaxed block">{scoreRec.conclusion}</span>
-                        </div>
-                        <div className="text-[10px] text-slate-500 italic mt-2 flex flex-col gap-1">
-                          <span>Sumber Data Prediksi (Cuaca & Laut): {scoreRec.overview.dataSource}</span>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <button 
-                      onClick={() => setIsAnalisaExpanded(!isAnalisaExpanded)}
-                      className="text-xs uppercase font-black tracking-widest text-slate-400 hover:text-teal-300 flex items-center justify-center p-3 mt-2 w-full bg-slate-800/80 rounded-xl transition-colors"
-                    >
-                      {isAnalisaExpanded ? 'Tutup Analisa' : 'Baca Analisa Penuh'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="relative z-10 w-full mb-2">
-                  <p className="text-[13px] sm:text-sm font-bold leading-relaxed text-white italic drop-shadow-md">
-                    Menyusun rekomendasi terbaik...
-                  </p>
-                </div>
-              )}
-            </div>
+            <FishingScoreCard 
+              scoreRec={scoreRec} 
+              isAnalisaExpanded={isAnalisaExpanded} 
+              setIsAnalisaExpanded={setIsAnalisaExpanded} 
+            />
 
-            <div className="bg-slate-800/50 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700">
-              <div className="flex justify-between items-center mb-4 md:mb-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-teal-400"><Fish size={20} /></span>
-                  <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Quick Stats</h3>
-                </div>
-                <div className="text-[9px] md:text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></div>
-                    <span className="hidden min-[360px]:inline">{weather.dataSource === 'bmkg' ? 'BMKG Cuaca' : 'OpenMeteo Cuaca'}</span>
-                    <span className="min-[360px]:hidden">Live</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
-                    <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-amber-500/10 mb-1">
-                      <Moon className="text-amber-400 w-4 h-4 sm:w-6 sm:h-6" />
-                    </div>
-                    <div className="w-full">
-                      <p className="text-[9px] sm:text-[11px] md:text-xs text-slate-500 font-black uppercase truncate mb-0.5 sm:mb-1">Fase Bulan</p>
-                      <p className="text-[11px] sm:text-sm md:text-base font-bold text-slate-200 leading-tight px-1">{moonPhase}</p>
-                    </div>
-                </div>
-                <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
-                    <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-blue-500/10 mb-1">
-                      <Droplets className="text-blue-400 w-4 h-4 sm:w-6 sm:h-6" />
-                    </div>
-                    <div className="w-full">
-                      <p className="text-[9px] sm:text-[11px] md:text-xs text-slate-500 font-black uppercase truncate mb-0.5 sm:mb-1">Cuaca</p>
-                      <p className="text-[11px] sm:text-sm md:text-base font-bold text-slate-200 leading-tight px-1">{weather.description}</p>
-                    </div>
-                </div>
-                <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
-                    <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-orange-500/10 mb-1">
-                      <Thermometer className="text-orange-400 w-4 h-4 sm:w-6 sm:h-6" />
-                    </div>
-                    <div className="w-full">
-                      <p className="text-[9px] sm:text-[11px] md:text-xs text-slate-500 font-black uppercase truncate mb-0.5 sm:mb-1">Suhu Cuaca</p>
-                      <p className="text-[11px] sm:text-sm md:text-base font-bold text-slate-200 leading-tight px-1">{weather.temperature}°C</p>
-                    </div>
-                </div>
-                <div className="bg-slate-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-slate-700 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
-                    <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center bg-teal-500/10 mb-1">
-                      <Wind className="text-teal-400 w-4 h-4 sm:w-6 sm:h-6" />
-                    </div>
-                    <div className="w-full flex flex-col items-center">
-                      <p className="text-[9px] sm:text-[11px] md:text-xs text-slate-500 font-black uppercase truncate mb-0.5 sm:mb-1">Angin</p>
-                      <div className="flex flex-col items-center gap-1">
-                        <p className="text-[11px] sm:text-sm md:text-base font-bold text-slate-200 leading-tight">{weather.windSpeed} km/h</p>
-                        {weather.windDirectionLabel && (
-                          <span className="text-[8px] sm:text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 mt-0.5">
-                            <Compass size={10} className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ transform: `rotate(${weather.windDirectionDeg || 0}deg)` }} />
-                            <span className="truncate max-w-[50px] sm:max-w-none">{weather.windDirectionLabel}</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                </div>
-              </div>
-            </div>
+            <WeatherCard weather={weather} moonPhase={moonPhase} isOnline={isOnline} />
           </>
         ) : null}
       </div>
@@ -443,132 +331,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </div>
 
             {/* Solunar Details Table */}
-            <div className="bg-slate-800/30 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700/50">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-400"><Activity size={20} /></span>
-                  <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Tabel Solunar Harian</h3>
-                </div>
-                <div className="text-[9px] md:text-[10px] text-slate-300 uppercase font-black px-3 py-1 bg-slate-900/50 rounded-full border border-slate-700">
-                  {format(displayedDate, 'dd MMM yyyy', { locale: idLocale })}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Major Periods */}
-                <div className="bg-slate-800/50 p-4 rounded-[1.5rem] border border-slate-700 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <Activity size={80} />
-                  </div>
-                  <h4 className="text-xs font-black text-amber-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400"></span> Waktu Utama (Major)
-                  </h4>
-                  <div className="space-y-4 relative z-10">
-                    <div>
-                      <p className="text-[10px] text-white/75 uppercase tracking-widest mb-1 font-bold">Transit Atas (Bulan di Puncak)</p>
-                      <p className="font-bold text-slate-100">
-                        {solunar.major1 ? `${format(solunar.major1.start, 'HH:mm')} - ${format(solunar.major1.end, 'HH:mm')}` : 'Tidak Ada'}
-                      </p>
-                    </div>
-                    <div className="h-px w-full bg-slate-700/50"></div>
-                    <div>
-                      <p className="text-[10px] text-white/75 uppercase tracking-widest mb-1 font-bold">Transit Bawah (Bulan di Bawah)</p>
-                      <p className="font-bold text-slate-100">
-                        {solunar.major2 ? `${format(solunar.major2.start, 'HH:mm')} - ${format(solunar.major2.end, 'HH:mm')}` : 'Tidak Ada'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Minor Periods */}
-                <div className="bg-slate-800/50 p-4 rounded-[1.5rem] border border-slate-700 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <Moon size={80} />
-                  </div>
-                  <h4 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-400"></span> Waktu Minor
-                  </h4>
-                  <div className="space-y-4 relative z-10">
-                    <div>
-                      <p className="text-[10px] text-white/75 uppercase tracking-widest mb-1 font-bold">Terbit Bulan (Moonrise)</p>
-                      <p className="font-bold text-slate-100">
-                        {solunar.minor1 ? `${format(solunar.minor1.start, 'HH:mm')} - ${format(solunar.minor1.end, 'HH:mm')}` : 'Tidak Ada'}
-                      </p>
-                    </div>
-                    <div className="h-px w-full bg-slate-700/50"></div>
-                    <div>
-                      <p className="text-[10px] text-white/75 uppercase tracking-widest mb-1 font-bold">Terbenam Bulan (Moonset)</p>
-                      <p className="font-bold text-slate-100">
-                        {solunar.minor2 ? `${format(solunar.minor2.start, 'HH:mm')} - ${format(solunar.minor2.end, 'HH:mm')}` : 'Tidak Ada'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SolunarTable solunar={solunar} displayedDate={displayedDate} />
             
             {/* 7-Day Tide Summary Table */}
-            <div className="bg-slate-800/30 p-5 sm:p-6 md:p-8 rounded-[2.5rem] border border-slate-700/50 overflow-hidden">
-              <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3 mb-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-indigo-400"><Calendar size={20} /></span>
-                  <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-300">Prediksi 7 Hari Ke Depan</h3>
-                </div>
-                <div className="text-[10px] text-slate-400 italic bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-700">Perencanaan Trip Jangka Panjang</div>
-              </div>
-              
-              <div className="overflow-x-auto custom-scrollbar -mx-5 sm:mx-0 px-5 sm:px-0">
-                <table className="w-full text-left min-w-[600px] border-separate border-spacing-y-2">
-                  <thead>
-                    <tr>
-                      <th className="font-black uppercase tracking-widest text-[10px] text-slate-500 pb-2 border-b border-slate-700/50 w-[20%] pt-2 px-4 shadow-sm">Tanggal</th>
-                      <th className="font-black uppercase tracking-widest text-[10px] text-slate-500 pb-2 border-b border-slate-700/50 w-[25%] pt-2 px-4 shadow-sm">Arus Air</th>
-                      <th className="font-black uppercase tracking-widest text-[10px] text-slate-500 pb-2 border-b border-slate-700/50 w-[25%] pt-2 px-4 shadow-sm text-center">Pasang (Tertinggi)</th>
-                      <th className="font-black uppercase tracking-widest text-[10px] text-slate-500 pb-2 border-b border-slate-700/50 w-[25%] pt-2 px-4 shadow-sm text-center">Surut (Terendah)</th>
-                      <th className="font-black uppercase tracking-widest text-[10px] text-slate-500 pb-2 border-b border-slate-700/50 w-[5%] pt-2 px-4 shadow-sm text-center">Amp</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {futureTideSummary.length > 0 ? futureTideSummary.map((day, idx) => (
-                      <tr key={idx} className="bg-slate-800/40 hover:bg-slate-700/40 transition-colors group">
-                        <td className="py-4 px-4 whitespace-nowrap border border-slate-700/30 rounded-l-2xl border-r-0 group-hover:border-slate-600/50">
-                          <span className="text-xs sm:text-sm font-bold text-slate-200 block">{day.dateStr}</span>
-                        </td>
-                        <td className="py-4 px-4 border border-slate-700/30 border-x-0 group-hover:border-slate-600/50">
-                          <span className={`inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${day.warnaArus}`}>
-                            {day.indikatorArus.includes('Kuat') && <TrendingUp size={12} className="-mt-0.5" />}
-                            {day.indikatorArus.includes('Lemah') && <Wind size={12} className="-mt-0.5" />}
-                            {day.indikatorArus.includes('Sedang') && <Droplets size={12} className="-mt-0.5" />}
-                            {day.indikatorArus}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 border border-slate-700/30 border-x-0 group-hover:border-slate-600/50 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            {day.highPoints.map((hp: any, i: number) => (
-                              <span key={i} className="text-xs text-white font-bold bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">{format(hp.time, 'HH:mm')} <span className="text-[10px] text-blue-400 font-normal">({hp.height.toFixed(2)}m)</span></span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 border border-slate-700/30 border-x-0 group-hover:border-slate-600/50 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            {day.lowPoints.map((lp: any, i: number) => (
-                              <span key={i} className="text-xs text-white font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{format(lp.time, 'HH:mm')} <span className="text-[10px] text-amber-400 font-normal">({lp.height.toFixed(2)}m)</span></span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 border border-slate-700/30 rounded-r-2xl border-l-0 group-hover:border-slate-600/50 text-center text-xs font-black text-slate-400">
-                          {(day.maxTide - day.minTide).toFixed(2)}m
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-500 text-sm italic border border-slate-700/50 rounded-2xl bg-slate-800/20">Data prediksi tidak tersedia</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <FutureTideSummary futureTideSummary={futureTideSummary} />
             </>
           ) : null}
       </div>
