@@ -81,96 +81,98 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 block flex items-center gap-2">
               <MapPin size={12} className="text-teal-400" /> Pilih Lokasi Memancing
             </label>
-            <div className="relative mb-3 z-50">
-              <input 
-                type="text"
-                placeholder="Cari desa/kecamatan..."
-                value={locationSearch}
-                onChange={(e) => setLocationSearch(e.target.value)}
-                className="w-full h-10 md:h-12 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-xs sm:text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 outline-none placeholder-slate-600 transition-all"
-              />
-              {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-2xl z-50 divide-y divide-slate-700">
-                  {searchResults.map((res: any, idx) => (
-                    <button 
-                      key={idx}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-700 text-xs sm:text-sm text-slate-300 transition-colors truncate"
-                      onClick={() => {
-                        const locName = res.name || res.address?.village || res.address?.town || res.address?.city || res.display_name.split(',')[0];
-                        setLocation({ name: locName, type: "Perairan/GPS", lat: parseFloat(res.lat), lon: parseFloat(res.lon) });
-                        setLocationSearch('');
-                        setSearchResults([]);
-                      }}
-                    >
-                      {res.display_name}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="flex gap-2 md:gap-3 mb-3">
+              <div className="relative flex-1 z-50">
+                <input 
+                  type="text"
+                  placeholder="Cari desa/kecamatan..."
+                  value={locationSearch}
+                  onChange={(e) => setLocationSearch(e.target.value)}
+                  className="w-full h-10 md:h-12 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-xs sm:text-sm font-medium rounded-xl focus:ring-teal-500 focus:border-teal-500 block px-4 outline-none placeholder-slate-600 transition-all"
+                />
+                {searchResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-2xl z-50 divide-y divide-slate-700">
+                    {searchResults.map((res: any, idx) => (
+                      <button 
+                        key={idx}
+                        className="w-full text-left px-4 py-3 hover:bg-slate-700 text-xs sm:text-sm text-slate-300 transition-colors truncate"
+                        onClick={() => {
+                          const locName = res.name || res.address?.village || res.address?.town || res.address?.city || res.display_name.split(',')[0];
+                          setLocation({ name: locName, type: "Perairan/GPS", lat: parseFloat(res.lat), lon: parseFloat(res.lon) });
+                          setLocationSearch('');
+                          setSearchResults([]);
+                        }}
+                      >
+                        {res.display_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button 
+                onClick={() => {
+                  if (navigator.geolocation) {
+                    setIsLocating(true);
+                    navigator.geolocation.getCurrentPosition(
+                      async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        try {
+                          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                          if (geoRes.ok) {
+                            const geoData = await geoRes.json();
+                            const locName = geoData.address?.village || geoData.address?.town || geoData.address?.city || geoData.address?.county || geoData.address?.state || "Lokasi Anda";
+                            setLocation({ name: locName, type: "Perairan/GPS", lat: latitude, lon: longitude });
+                          } else {
+                            setLocation({ name: "Titik GPS", type: "Perairan/GPS", lat: latitude, lon: longitude });
+                          }
+                        } catch (e) {
+                          setLocation({ name: "Titik GPS", type: "Perairan/GPS", lat: latitude, lon: longitude });
+                        } finally {
+                          setIsLocating(false);
+                        }
+                      },
+                      (err) => {
+                        setIsLocating(false);
+                        alert("Gagal mendapatkan lokasi. Pastikan izin GPS diaktifkan.");
+                      },
+                      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                    );
+                  } else {
+                    alert("Browser Anda tidak mendukung GPS.");
+                  }
+                }}
+                disabled={isLocating}
+                className={`flex items-center justify-center shrink-0 w-10 h-10 md:w-12 md:h-12 bg-slate-900/60 text-teal-400 rounded-xl border border-slate-700/50 transition-colors ${isLocating ? 'opacity-50 cursor-wait' : 'hover:bg-slate-800'}`}
+                title="Deteksi Lokasi Saya"
+              >
+                {isLocating ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-500"></div>
+                ) : (
+                  <MapPin size={16} />
+                )}
+              </button>
             </div>
-            <select 
-              className="w-full h-12 md:h-14 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-sm font-bold rounded-2xl focus:ring-teal-500 focus:border-teal-500 block px-4 pr-10 appearance-none outline-none truncate"
-              value={location.name}
-              onChange={(e) => {
-                const loc = PRESET_LOCATIONS.find(l => l.name === e.target.value);
-                if(loc) setLocation(loc);
-              }}
-            >
-              {!PRESET_LOCATIONS.some(l => l.name === location.name) && (
-                <option value={location.name} className="bg-slate-800">{location.name} ({location.type})</option>
-              )}
-              {PRESET_LOCATIONS.map(loc => (
-                <option key={loc.name} value={loc.name} className="bg-slate-800">{loc.name} ({loc.type})</option>
-              ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-teal-400">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            <div className="relative">
+              <select 
+                className="w-full h-12 md:h-14 bg-slate-900/60 border border-slate-700/50 text-slate-100 text-sm font-bold rounded-2xl focus:ring-teal-500 focus:border-teal-500 block px-4 pr-10 appearance-none outline-none truncate"
+                value={location.name}
+                onChange={(e) => {
+                  const loc = PRESET_LOCATIONS.find(l => l.name === e.target.value);
+                  if(loc) setLocation(loc);
+                }}
+              >
+                {!PRESET_LOCATIONS.some(l => l.name === location.name) && (
+                  <option value={location.name} className="bg-slate-800">{location.name} ({location.type})</option>
+                )}
+                {PRESET_LOCATIONS.map(loc => (
+                  <option key={loc.name} value={loc.name} className="bg-slate-800">{loc.name} ({loc.type})</option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-teal-400">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
             </div>
           </div>
-          <button 
-            onClick={() => {
-              if (navigator.geolocation) {
-                setIsLocating(true);
-                navigator.geolocation.getCurrentPosition(
-                  async (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    try {
-                      // Try to get a meaningful location name using OpenStreetMap Nominatim
-                      const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                      if (geoRes.ok) {
-                        const geoData = await geoRes.json();
-                        // Prefer village, town, city, or fall back to generic label
-                        const locName = geoData.address.village || geoData.address.town || geoData.address.city || geoData.address.county || geoData.address.state || "Lokasi Anda";
-                        setLocation({ name: locName, type: "Perairan/GPS", lat: latitude, lon: longitude });
-                      } else {
-                        setLocation({ name: "Titik GPS", type: "Perairan/GPS", lat: latitude, lon: longitude });
-                      }
-                    } catch (e) {
-                      setLocation({ name: "Titik GPS", type: "Perairan/GPS", lat: latitude, lon: longitude });
-                    } finally {
-                      setIsLocating(false);
-                    }
-                  },
-                  (err) => {
-                    setIsLocating(false);
-                    alert("Gagal mendapatkan lokasi. Pastikan izin GPS diaktifkan.");
-                  },
-                  { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                );
-              } else {
-                alert("Browser Anda tidak mendukung GPS.");
-              }
-            }}
-            disabled={isLocating}
-            style={{ width: '65.79px' }}
-            className={`mx-auto md:mx-0 flex items-center justify-center h-12 md:h-14 bg-slate-700/50 text-teal-400 rounded-2xl border border-slate-600/50 transition-colors shrink-0 ${isLocating ? 'opacity-50 cursor-wait' : 'hover:bg-slate-700'}`}
-          >
-            {isLocating ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-500"></div>
-            ) : (
-              <MapPin size={20} />
-            )}
-          </button>
         </div>
 
         {isLoading ? (
@@ -222,7 +224,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                           <span className="text-teal-50/90 text-sm leading-relaxed block">{scoreRec.conclusion}</span>
                         </div>
                         <div className="text-[10px] text-slate-500 italic mt-2 flex flex-col gap-1">
-                          <span>Sumber pasang surut: {scoreRec.overview.dataSource}</span>
+                          <span>Sumber Data Prediksi (Cuaca & Laut): {scoreRec.overview.dataSource}</span>
                         </div>
                       </div>
                     )}
@@ -252,7 +254,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 </div>
                 <div className="text-[9px] md:text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
                     <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></div>
-                    <span className="hidden min-[360px]:inline">OpenMeteo Data</span>
+                    <span className="hidden min-[360px]:inline">{weather.dataSource === 'bmkg' ? 'BMKG Cuaca' : 'OpenMeteo Cuaca'}</span>
                     <span className="min-[360px]:hidden">Live</span>
                 </div>
               </div>

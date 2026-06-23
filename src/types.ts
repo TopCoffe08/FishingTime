@@ -50,6 +50,7 @@ export interface WeatherCondition {
   windDirectionDeg?: number;
   windDirectionLabel?: string;
   description: string;
+  dataSource?: 'bmkg' | 'open-meteo';
 }
 
 export interface FishSpecies {

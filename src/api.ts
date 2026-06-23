@@ -5,17 +5,19 @@ import { format, addHours, startOfHour } from 'date-fns';
 
 export const BMKG_ATTRIBUTION = 'Sumber data pasang surut: BMKG';
 const BMKG_PUBLIC_API = 'https://peta-maritim.bmkg.go.id/public_api/pelabuhan';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 export async function fetchBMKGTide(bmkgCode: string): Promise<BMKGTideInfo | null> {
   try {
-    const res = await axios.get(`${CORS_PROXY}${encodeURIComponent(BMKG_PUBLIC_API)}`, {
+    const res = await axios.get(BMKG_PUBLIC_API, {
       timeout: 10000
     });
 
     if (!res.data) return null;
 
     const allPorts = Array.isArray(res.data) ? res.data : Object.values(res.data);
+    if (allPorts.length > 0) {
+      console.log('BMKG Port 0:', allPorts[0]);
+    }
     const portData: any = allPorts.find((p: any) => p.Code === bmkgCode || p.code === bmkgCode);
 
     if (!portData) {
@@ -56,28 +58,35 @@ export function generateAnchoredTideCurve(
 ): TideData[] {
   const { highTide, highTideTime, lowTide, lowTideTime } = bmkgData;
   const avgHeight = (highTide + lowTide) / 2;
-  const amplitude = (highTide - lowTide) / 2;
+  const anchorAmplitude = (highTide - lowTide) / 2;
 
   const highMs = highTideTime.getTime();
-  const lowMs = lowTideTime.getTime();
-  let halfPeriodMs = Math.abs(highMs - lowMs);
 
-  if (halfPeriodMs < 3 * 3600000 || halfPeriodMs > 14 * 3600000) {
-    halfPeriodMs = 6.2 * 3600000;
-  }
-
-  const fullPeriodMs = halfPeriodMs * 2;
+  // Perairan Indonesia umumnya semi-diurnal, periode utama (M2) sekitar 12 jam 25 menit (12.4206 jam)
+  const SEMIDIURNAL_PERIOD_MS = 12.4206 * 3600000;
+  const angularFreq = (2 * Math.PI) / SEMIDIURNAL_PERIOD_MS;
   const referenceMs = highMs;
-  const angularFreq = (2 * Math.PI) / fullPeriodMs;
 
   const now = new Date();
   const results: TideData[] = [];
   const startTime = new Date(now.getTime() - startHoursAgo * 3600000);
 
+  // Dapatkan fase bulan pada saat anchor point
+  const anchorIllumination = SunCalc.getMoonIllumination(highTideTime);
+  const anchorMultiplier = 1 + 0.3 * Math.cos(anchorIllumination.phase * Math.PI * 2 * 2);
+  
+  // Normalisasi amplitude
+  const baseAmplitude = anchorAmplitude / anchorMultiplier;
+
   for (let i = 0; i <= totalHours; i++) {
     const t = new Date(startTime.getTime() + i * 3600000);
     const dtMs = t.getTime() - referenceMs;
-    const h = avgHeight + amplitude * Math.cos(angularFreq * dtMs);
+    
+    // Perubahan spring-neap tide: skalar amplitude berdasarkan fase bulan harian
+    const currentPhase = SunCalc.getMoonIllumination(t).phase;
+    const currentMultiplier = 1 + 0.3 * Math.cos(currentPhase * Math.PI * 2 * 2);
+
+    const h = avgHeight + (baseAmplitude * currentMultiplier) * Math.cos(angularFreq * dtMs);
     results.push({ time: t, height: parseFloat(h.toFixed(2)) });
   }
 
@@ -87,11 +96,18 @@ export function generateAnchoredTideCurve(
 function generateFallbackSineWave(moonPhase: number, baseTime: Date): TideData[] {
   const results: TideData[] = [];
   const baseHeight = 1.0;
-  const tideMultiplier = 1 + 0.3 * Math.cos(moonPhase * Math.PI * 2 * 2);
+  const SEMIDIURNAL_PERIOD_HR = 12.4206;
+  const angularFreq = (2 * Math.PI) / SEMIDIURNAL_PERIOD_HR;
+
   const startOfDayTime = new Date(baseTime.getFullYear(), baseTime.getMonth(), baseTime.getDate());
   for (let i = -48; i < 168; i++) {
     const t = addHours(startOfDayTime, i);
-    const h = baseHeight + Math.sin((t.getTime() / (1000 * 60 * 60)) * (Math.PI / 6)) * 1.5 * tideMultiplier;
+    const currentPhase = SunCalc.getMoonIllumination(t).phase;
+    const currentMultiplier = 1 + 0.3 * Math.cos(currentPhase * Math.PI * 2 * 2);
+    
+    // Offset agar waktu pasang tidak persis sama setiap harinya (efek pengunduran waktu pasang)
+    const dtHours = t.getTime() / 3600000;
+    const h = baseHeight + Math.sin(dtHours * angularFreq) * 1.5 * currentMultiplier;
     results.push({ time: t, height: Number(h.toFixed(2)) });
   }
   return results;
@@ -99,7 +115,7 @@ function generateFallbackSineWave(moonPhase: number, baseTime: Date): TideData[]
 
 export async function fetchBMKGWeather(lat: number, lon: number): Promise<WeatherCondition | null> {
   try {
-    const url = `${CORS_PROXY}${encodeURIComponent(`https://api-apps.bmkg.go.id/api/cuaca?lon=${lon}&lat=${lat}`)}`;
+    const url = `https://api-apps.bmkg.go.id/api/cuaca?lon=${lon}&lat=${lat}`;
     const res = await axios.get(url, { timeout: 10000 });
     
     if (res.data && res.data.data && res.data.data.length > 0 && res.data.data[0].cuaca) {
@@ -123,7 +139,8 @@ export async function fetchBMKGWeather(lat: number, lon: number): Promise<Weathe
           windSpeed: closest.ws,
           windDirectionDeg: closest.wd_deg,
           windDirectionLabel: getWindDirectionLabel(closest.wd_deg),
-          description: closest.weather_desc
+          description: closest.weather_desc,
+          dataSource: 'bmkg'
         };
       }
     }
@@ -157,11 +174,69 @@ function getWindDirectionLabel(deg: number): string {
   return "Tidak ada angin";
 }
 
+let cachedBMKGPorts: any[] | null = null;
+
+async function getAllBMKGPorts(): Promise<any[]> {
+  if (cachedBMKGPorts) return cachedBMKGPorts;
+  try {
+    const res = await axios.get(BMKG_PUBLIC_API, { timeout: 10000 });
+    if (res.data) {
+      cachedBMKGPorts = Array.isArray(res.data) ? res.data : Object.values(res.data);
+      return cachedBMKGPorts || [];
+    }
+  } catch (err) {
+    console.warn('Gagal cache BMKG ports:', err);
+  }
+  return [];
+}
+
+async function findClosestBMKGPort(lat: number, lon: number): Promise<string | null> {
+  const ports = await getAllBMKGPorts();
+  if (!ports || ports.length === 0) return null;
+
+  let closestCode: string | null = null;
+  let minDistance = Infinity;
+
+  const getNum = (val: any) => {
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') return parseFloat(val.replace(',', '.'));
+    return null;
+  };
+
+  for (const port of ports) {
+    const pLatStr = port.lat ?? port.Lat ?? port.latitude ?? port.Latitude;
+    const pLonStr = port.lon ?? port.Lon ?? port.longitude ?? port.Longitude;
+    
+    if (pLatStr !== undefined && pLonStr !== undefined && pLatStr !== null && pLonStr !== null) {
+      const pLat = getNum(pLatStr);
+      const pLon = getNum(pLonStr);
+      
+      if (pLat !== null && pLon !== null && !isNaN(pLat) && !isNaN(pLon)) {
+        const dist = Math.sqrt(Math.pow(pLat - lat, 2) + Math.pow(pLon - lon, 2));
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestCode = port.Code || port.code;
+        }
+      }
+    }
+  }
+  
+  if (closestCode) {
+    console.log(`Nearest BMKG port found: ${closestCode} at dist ${minDistance}`);
+    return closestCode;
+  }
+  return null;
+}
+
 export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: string | null): Promise<{
   tide: TidePrediction,
   weather: WeatherCondition,
   moonPhaseStr: string
 }> {
+  if (!bmkgCode) {
+    bmkgCode = await findClosestBMKGPort(lat, lon);
+  }
+
   // Fetch Weather and marine data from Open-Meteo
   // Marine API expects slightly different lat/lon sometimes but usually works near coast.
   const now = new Date();
@@ -195,7 +270,8 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
         windSpeed: currentW.windspeed,
         windDirectionDeg: currentW.winddirection,
         windDirectionLabel: currentW.winddirection !== undefined ? getWindDirectionLabel(currentW.winddirection) : undefined,
-        description: getWeatherDescription(currentW.weathercode)
+        description: getWeatherDescription(currentW.weathercode),
+        dataSource: 'open-meteo'
       };
     }
 
@@ -245,7 +321,16 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
       && marineRes.data.hourly.sea_level
       && marineRes.data.hourly.sea_level.some((v: number|null) => v !== null);
 
-    if (hasMarineData) {
+    if (bmkgCode) {
+      bmkgTideInfo = await fetchBMKGTide(bmkgCode);
+      if (bmkgTideInfo) {
+        dataSource = 'bmkg';
+        hourlyData = generateAnchoredTideCurve(bmkgTideInfo);
+        console.log('Berhasil menggunakan data BMKG');
+      }
+    }
+
+    if (dataSource === 'estimated' && hasMarineData) {
       dataSource = 'marine-api';
       const times = marineRes.data.hourly.time;
       const levels = marineRes.data.hourly.sea_level;
@@ -258,21 +343,8 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
           });
         }
       }
-    } else if (bmkgCode) {
-      console.log('Marine API tidak ada data, mencoba BMKG...');
-      bmkgTideInfo = await fetchBMKGTide(bmkgCode);
-
-      if (bmkgTideInfo) {
-        dataSource = 'bmkg';
-        hourlyData = generateAnchoredTideCurve(bmkgTideInfo);
-        console.log('Berhasil menggunakan data BMKG');
-      } else {
-        dataSource = 'estimated';
-        isFallback = true;
-        hourlyData = generateFallbackSineWave(phaseValue, now);
-      }
-    } else {
-      dataSource = 'estimated';
+    } else if (dataSource === 'estimated') {
+      console.log('Tidak ada data BMKG maupun Marine, fallback ke estimasi.');
       isFallback = true;
       hourlyData = generateFallbackSineWave(phaseValue, now);
     }
@@ -462,9 +534,12 @@ export async function fetchRecommendation(params: {
   const secondaryReason = reasonParts[1] ? `, dan ${reasonParts[1]}` : "";
   const simpleRec = `Apakah sekarang waktu yang tepat untuk memancing di ${timeStr} hari ini?\nSkor: ${score}/100 (${category})\nAlasan Utama: ${primaryReason}${secondaryReason}.`;
   
-  let sourceLabel = "Estimasi Simulasi Sinkronisasi Solunar (Kurang Akurat)";
-  if (params.tideData.dataSource === 'bmkg') sourceLabel = "BMKG Resmi Nasional";
-  else if (params.tideData.dataSource === 'marine-api') sourceLabel = "Kalkulasi Gelombang Laut Global (Open-Meteo)";
+  let weatherSourceStr = params.weatherData.dataSource === 'bmkg' ? 'BMKG' : 'Open-Meteo';
+  let tideSourceStr = 'Estimasi Fallback';
+  if (params.tideData.dataSource === 'bmkg') tideSourceStr = 'BMKG';
+  else if (params.tideData.dataSource === 'marine-api') tideSourceStr = 'Open-Meteo Marine';
+
+  let sourceLabel = `Cuaca: ${weatherSourceStr} | Pasang Surut: ${tideSourceStr}`;
 
   const factors: AnalysisFactor[] = [];
 

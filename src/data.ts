@@ -232,31 +232,31 @@ export const SPECIES_DB: FishSpecies[] = [
 
 export const PRESET_LOCATIONS: FishingLocation[] = [
   { 
-    name: "Sungai Mahakam", type: "Sungai", lat: -0.509420, lon: 117.126430, bmkgCode: null, bmkgSlug: null,
+    name: "Sungai Mahakam", type: "Sungai", lat: -0.509420, lon: 117.126430, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Baung, Patin Liar, Lais, Kendia, Udang Galah",
     conditions: "Fase 'Air Bangkai' (peralihan jernih-keruh). Malam hari menjelang pasang penuh (arus mulai tenang).",
     bait: "Umpan Kucur (fermentasi usus/lemak), cacing tanah besar, cacing nipah"
   },
   { 
-    name: "Muara Pegah", type: "Muara", lat: -0.909850, lon: 117.262150, bmkgCode: null, bmkgSlug: null,
+    name: "Muara Pegah", type: "Muara", lat: -0.909850, lon: 117.262150, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Barramundi (Kakap Putih), Mangrove Jack, Sembilang Laut",
     conditions: "'Arus Jalan' (peralihan surut ke pasang atau sebaliknya). Paling pas saat Neap Tide (Pasang Mati).",
     bait: "Udang hidup, Ikan Belanak hidup, Lure Minnow Sinking"
   },
   { 
-    name: "Muara Sanga-Sanga", type: "Muara", lat: -0.592140, lon: 117.289450, bmkgCode: null, bmkgSlug: null,
+    name: "Muara Sanga-Sanga", type: "Muara", lat: -0.592140, lon: 117.289450, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Kakap Putih, Kerapu Lumpur, Bekuku",
     conditions: "Air payau jernih kehijauan. Waktu terbaik subuh atau malam hari.",
     bait: "Udang hidup, irisan daging ikan segar (kembung/tongkol)"
   },
   { 
-    name: "Muara Berau", type: "Muara", lat: -0.218500, lon: 117.531100, bmkgCode: null, bmkgSlug: null,
+    name: "Muara Berau", type: "Muara", lat: -0.218500, lon: 117.531100, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Barramundi besar, Mangrove Jack, Kepiting Bakau",
     conditions: "Pinggiran hutan bakau lebat. Paling aktif saat air mulai pasang.",
     bait: "Udang hidup berukuran besar, Soft Bait Paddle Tail (casting)"
   },
   { 
-    name: "Karang Mumus", type: "Anak Sungai", lat: -0.505280, lon: 117.152420, bmkgCode: null, bmkgSlug: null,
+    name: "Karang Mumus", type: "Anak Sungai", lat: -0.505280, lon: 117.152420, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Haruan (Gabus), Toman, Lais kecil",
     conditions: "Pagi hari (06.00 - 09.00) saat predator naik mengambil oksigen. Air tenang.",
     bait: "Katak hidup, Soft Frog, cacing tanah"
@@ -282,32 +282,31 @@ export const PRESET_LOCATIONS: FishingLocation[] = [
   },
 
   { 
-    name: "Pulau Beras Basah", type: "Laut", lat: 0.155820, lon: 117.550300, bmkgCode: null, bmkgSlug: null,
+    name: "Pulau Beras Basah", type: "Laut", lat: 0.155820, lon: 117.550300, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Kerapu Karang, Kakap Tompel (John's Snapper), Cendro",
     conditions: "Air laut jernih. Batas terumbu karang dangkal dan tubiran.",
     bait: "Udang hidup, potongan cumi, casting spoon mengkilap"
   },
   { 
-    name: "Muara Sangatta", type: "Muara", lat: 0.453100, lon: 117.589100, bmkgCode: null, bmkgSlug: null,
+    name: "Muara Sangatta", type: "Muara", lat: 0.453100, lon: 117.589100, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Barramundi, Mangrove Jack, Tetengkek",
     conditions: "Transisi air payau-asin. Targetkan saat air bergerak surut lambat.",
     bait: "Ikan Belanak kecil hidup, Udang hidup, Minnow"
   },
   { 
-    name: "Pantai Kenyamukan", type: "Laut", lat: 0.512200, lon: 117.615500, bmkgCode: null, bmkgSlug: null,
+    name: "Pantai Kenyamukan", type: "Laut", lat: 0.512200, lon: 117.615500, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Kakap Merah Muara, Kerapu, Puput",
     conditions: "Sore hari menjelang magrib atau saat air mulai pasang naik.",
     bait: "Udang hidup, potongan cumi segar"
   },
-
   { 
-    name: "Pulau Derawan", type: "Laut", lat: 2.284500, lon: 118.242100, bmkgCode: null, bmkgSlug: null,
+    name: "Pulau Derawan", type: "Laut", lat: 2.284500, lon: 118.242100, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "GT, Tuna Gigi Anjing, Kakap Merah Ruby",
     conditions: "Area drop-off. Air harus biru pekat. Hindari musim angin selatan.",
     bait: "Popper besar, cumi utuh besar (dasaran berat)"
   },
   { 
-    name: "Selat Maratua", type: "Laut", lat: 2.247200, lon: 118.618400, bmkgCode: null, bmkgSlug: null,
+    name: "Selat Maratua", type: "Laut", lat: 2.247200, lon: 118.618400, bmkgCode: 'XY004', bmkgSlug: 'pelabuhan-kariangau-balikpapan',
     targets: "Tuna Gigi Anjing, Tenggiri besar, Tongkol Kraton, Barakuda",
     conditions: "Arus laut sangat kuat dan dalam. Waktu terbaik saat pergantian arus pasang ke surut.",
     bait: "Metal Jig berat (100g - 200g), Stickbait"
