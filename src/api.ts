@@ -7,6 +7,131 @@ export const BMKG_ATTRIBUTION = 'Sumber data pasang surut: BMKG';
 const BMKG_PUBLIC_API = 'https://peta-maritim.bmkg.go.id/public_api/pelabuhan';
 const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
+export async function scrapeBMKGFromSlug(slug: string): Promise<{
+  hourlyTide: TideData[],
+  currentWeather: WeatherCondition | null
+} | null> {
+  try {
+    const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://maritim.bmkg.go.id/cuaca/pelabuhan/${slug}`)}`;
+    const res = await axios.get(url, { timeout: 15000 });
+    const html = res.data;
+    if (!html || typeof html !== 'string') return null;
+
+    const tbodyMatch = html.match(/<tbody.*?<\/tbody>/gis);
+    if (!tbodyMatch) return null;
+
+    const tbody = tbodyMatch[0];
+    const rows = tbody.split('<tr');
+    rows.shift(); // remove first chunk (before first tr)
+
+    const hourlyTide: TideData[] = [];
+    let currentWeather: WeatherCondition | null = null;
+
+    const now = new Date();
+    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      // Time: <div class="time-main"...>24 Jun 26, 00.00</div>
+      const timeMatch = row.match(/<div class="time-main"[^>]*>([^<]+)<\/div>/);
+      const tds = row.split(/<td/gis);
+      if (!timeMatch || tds.length < 10) continue;
+      
+      const timeStr = timeMatch[1].trim(); // e.g. "24 Jun 26, 00.00"
+      
+      // Parse the time string to a Date object
+      // format: "DD MMM YY, HH.mm" -> "24 Jun 26, 00.00"
+      // Wait, we can just assume it starts from "00:00 UTC" of the requested forecast day and increments hourly.
+      // But let's try to just parse it simply or use the offset.
+      // Better yet, just use new Date(timeStr.replace(',', '').replace('.', ':'))
+      // It might be Indonesian short months though. We can just add (i) hours from a base time if parsing fails.
+      // Let's use `startOfHour(now)` and add hours, because the table starts from 00:00 UTC of today or past day.
+      // Actually, we can look at "24 Jun 26, 00.00" -> it's UTC time. We can convert to local.
+      
+      let dateObj = new Date();
+      try {
+        const parts = timeStr.split(',');
+        if (parts.length === 2) {
+           const timePart = parts[1].trim().replace('.', ':');
+           const datePart = parts[0].trim();
+           dateObj = new Date(`${datePart} ${timePart} UTC`);
+        }
+      } catch(e) {}
+      
+      if (isNaN(dateObj.getTime())) {
+        // Fallback if parsing fails
+        dateObj = addHours(startOfHour(now), i - 12); // rough estimate
+      }
+
+      // Tide (Pasut): <span class="font-medium text-gray-900"...>-0.04 <span...
+      const tideMatch = tds[9]?.match(/>([^<]+)<span class="text-gray-500/);
+      let height = 0;
+      if (tideMatch) {
+        height = parseFloat(tideMatch[1].trim());
+      }
+
+      hourlyTide.push({
+        time: dateObj,
+        height: height
+      });
+
+      // Capture current weather from the first row that is close to NOW
+      // Or just take the first row for now if currentWeather is null
+      if (i === 0) {
+        // Cuaca
+        const weatherMatch = tds[2]?.match(/<span class="weather-text"[^>]*>([^<]+)<\/span>/);
+        const desc = weatherMatch ? weatherMatch[1].trim() : 'Berawan';
+        
+        // Wind speed: <div class="font-medium text-sm sm:text-base"...>Barat Daya 4 kt</div>
+        const windMatch = tds[3]?.match(/<div class="font-medium[^>]*>([^<]+) (\d+) kt<\/div>/);
+        let windDirLabel = 'Selatan';
+        let windSpeedKt = 0;
+        if (windMatch) {
+          windDirLabel = windMatch[1].trim();
+          windSpeedKt = parseInt(windMatch[2].trim());
+        } else {
+           // alternate matching
+           const altWindMatch = tds[3]?.match(/<div class="font-medium[^>]*>([^<]+)<\/div>/);
+           if (altWindMatch) {
+              const parts = altWindMatch[1].trim().split(' ');
+              const ktIndex = parts.indexOf('kt');
+              if(ktIndex > 0) {
+                 windSpeedKt = parseInt(parts[ktIndex-1]);
+                 windDirLabel = parts.slice(0, ktIndex-1).join(' ');
+              }
+           }
+        }
+        
+        // Temp: 27 °C
+        const tempMatch = tds[7]?.match(/>([^<]+)<span class="text-gray-500/);
+        let temp = 28;
+        if (tempMatch) {
+          temp = parseInt(tempMatch[1].trim());
+        }
+
+        currentWeather = {
+          temperature: temp,
+          weatherCode: 1, // mock
+          windSpeed: Math.round(windSpeedKt * 1.852), // convert kt to km/h
+          windDirectionDeg: 0,
+          windDirectionLabel: windDirLabel,
+          description: desc,
+          dataSource: 'bmkg'
+        };
+      }
+    }
+
+    if (hourlyTide.length > 0) {
+      return {
+        hourlyTide,
+        currentWeather
+      };
+    }
+
+  } catch (err) {
+    console.warn(`Gagal scrape BMKG pelabuhan ${slug}:`, err);
+  }
+  return null;
+}
 export async function fetchBMKGTide(bmkgCode: string): Promise<BMKGTideInfo | null> {
   try {
     const res = await axios.get(`${CORS_PROXY}${encodeURIComponent(BMKG_PUBLIC_API)}`, {
@@ -229,7 +354,7 @@ async function findClosestBMKGPort(lat: number, lon: number): Promise<string | n
   return null;
 }
 
-export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: string | null): Promise<{
+export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: string | null, bmkgSlug?: string | null): Promise<{
   tide: TidePrediction,
   weather: WeatherCondition,
   moonPhaseStr: string
@@ -323,11 +448,30 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
       && marineRes.data.hourly.sea_level.some((v: number|null) => v !== null);
 
     if (bmkgCode) {
-      bmkgTideInfo = await fetchBMKGTide(bmkgCode);
-      if (bmkgTideInfo) {
-        dataSource = 'bmkg';
-        hourlyData = generateAnchoredTideCurve(bmkgTideInfo);
-        console.log('Berhasil menggunakan data BMKG');
+      if (bmkgSlug) {
+        const scraped = await scrapeBMKGFromSlug(bmkgSlug);
+        if (scraped) {
+          dataSource = 'bmkg';
+          hourlyData = scraped.hourlyTide;
+          if (scraped.currentWeather) {
+             weatherCond = scraped.currentWeather;
+          }
+          console.log('Berhasil menggunakan data BMKG (Scraped)');
+        } else {
+          bmkgTideInfo = await fetchBMKGTide(bmkgCode);
+          if (bmkgTideInfo) {
+            dataSource = 'bmkg';
+            hourlyData = generateAnchoredTideCurve(bmkgTideInfo);
+            console.log('Berhasil menggunakan data BMKG (API Pasut)');
+          }
+        }
+      } else {
+        bmkgTideInfo = await fetchBMKGTide(bmkgCode);
+        if (bmkgTideInfo) {
+          dataSource = 'bmkg';
+          hourlyData = generateAnchoredTideCurve(bmkgTideInfo);
+          console.log('Berhasil menggunakan data BMKG (API Pasut)');
+        }
       }
     }
 

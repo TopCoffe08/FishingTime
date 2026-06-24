@@ -211,7 +211,7 @@ export default function App() {
     async function loadExternalData() {
       setIsLoading(true);
       try {
-        const { tide, weather, moonPhaseStr } = await fetchTideAndWeather(location.lat, location.lon, location.bmkgCode);
+        const { tide, weather, moonPhaseStr } = await fetchTideAndWeather(location.lat, location.lon, location.bmkgCode, location.bmkgSlug);
         setTide(tide);
         setWeather(weather);
         setMoonPhase(moonPhaseStr);
