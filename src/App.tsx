@@ -208,24 +208,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    async function loadData() {
+    async function loadExternalData() {
       setIsLoading(true);
       try {
         const { tide, weather, moonPhaseStr } = await fetchTideAndWeather(location.lat, location.lon, location.bmkgCode);
         setTide(tide);
         setWeather(weather);
         setMoonPhase(moonPhaseStr);
-
-        const rec = await fetchRecommendation({
-          location: location.name,
-          tideData: tide,
-          weatherData: weather,
-          moonPhaseStr: moonPhaseStr,
-          timeOfDay: format(new Date(), 'HH:mm'),
-          logs: logs
-        });
-        setScoreRec(rec);
-
       } catch (err) {
         console.error(err);
       } finally {
@@ -233,8 +222,29 @@ export default function App() {
       }
     }
     
-    loadData();
-  }, [location, logs]);
+    loadExternalData();
+  }, [location]);
+
+  useEffect(() => {
+    async function updateRecommendation() {
+      if (!tide || !weather || !moonPhase) return;
+      try {
+        const rec = await fetchRecommendation({
+          location: location.name,
+          tideData: tide,
+          weatherData: weather,
+          moonPhaseStr: moonPhase,
+          timeOfDay: format(new Date(), 'HH:mm'),
+          logs: logs
+        });
+        setScoreRec(rec);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    
+    updateRecommendation();
+  }, [location.name, tide, weather, moonPhase, logs]);
 
   return (
     <div className="min-h-screen bg-[#0A0F1D] text-slate-100 pb-20 md:pb-0 font-sans flex flex-col items-center">
