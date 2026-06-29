@@ -240,7 +240,8 @@ export default function App() {
           weatherData: weather,
           moonPhaseStr: moonPhase,
           timeOfDay: format(new Date(), 'HH:mm'),
-          logs: logsRef.current
+          logs: logsRef.current,
+          solunarData: solunar
         });
         setScoreRec(rec);
       } catch (err) {
@@ -249,7 +250,7 @@ export default function App() {
     }
     
     updateRecommendation();
-  }, [location.name, tide, weather, moonPhase]);
+  }, [location.name, tide, weather, moonPhase, solunar]);
 
   return (
     <div className="min-h-screen bg-[#0A0F1D] text-slate-100 pb-20 md:pb-0 font-sans flex flex-col items-center">

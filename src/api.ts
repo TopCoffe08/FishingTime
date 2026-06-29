@@ -559,6 +559,7 @@ export async function fetchRecommendation(params: {
   moonPhaseStr: string;
   timeOfDay: string;
   logs?: Array<{notes: string, date: string, location: string}>;
+  solunarData?: { major1: any, major2: any, minor1: any, minor2: any } | null;
 }) {
   let score = 40; // Base score
   let reasonParts: string[] = [];
@@ -600,6 +601,47 @@ export async function fetchRecommendation(params: {
   } else {
     score += 8;
     reasonParts.push("fase bulan reguler tidak memberikan dorongan pasang surut yang signifikan");
+  }
+
+  // 2.5 Solunar analysis
+  let solunarFactorDesc = "";
+  let solunarFactorTitle = "";
+  if (params.solunarData) {
+    const isNowInPeriod = (period: any, date: Date): boolean => {
+      if (!period || !period.start || !period.end) return false;
+      return date >= period.start && date <= period.end;
+    };
+    
+    const inMajor = isNowInPeriod(params.solunarData.major1, now) || isNowInPeriod(params.solunarData.major2, now);
+    const inMinor = isNowInPeriod(params.solunarData.minor1, now) || isNowInPeriod(params.solunarData.minor2, now);
+    
+    // Check for 30 min pre-major
+    let preMajor = false;
+    if (!inMajor && !inMinor) {
+      const checkPre = (period: any, date: Date) => {
+        if (!period || !period.start) return false;
+        const preStart = new Date(period.start.getTime() - 30 * 60000);
+        return date >= preStart && date < period.start;
+      };
+      preMajor = checkPre(params.solunarData.major1, now) || checkPre(params.solunarData.major2, now);
+    }
+
+    if (inMajor) {
+      score += 20;
+      reasonParts.push("sedang dalam periode major solunar (transit bulan), waktu emas mancing");
+      solunarFactorTitle = "Periode Solunar [Major]";
+      solunarFactorDesc = "Bulan transit di atas atau di bawah (Major period). Ini adalah waktu emas mancing di mana aktivitas makan ikan sedang pada puncaknya.";
+    } else if (inMinor) {
+      score += 10;
+      reasonParts.push("sedang dalam periode minor solunar (moonrise/moonset)");
+      solunarFactorTitle = "Periode Solunar [Minor]";
+      solunarFactorDesc = "Bulan sedang terbit atau terbenam (Minor period). Ada peningkatan aktivitas ikan meski tidak sebesar Major period.";
+    } else if (preMajor) {
+      score += 10;
+      reasonParts.push("30 menit menuju periode major solunar, segera siapkan perlengkapan");
+      solunarFactorTitle = "Periode Solunar [Pre-Major]";
+      solunarFactorDesc = "30 menit sebelum periode Major dimulai. Ini saat yang tepat menyiapkan posisi, alat, dan umpan sebelum ikan agresif.";
+    }
   }
 
   // 3. Time of day analysis
@@ -769,6 +811,14 @@ export async function fetchRecommendation(params: {
     factors.push({
       title: "Fase Bulan Mati (New Moon)",
       description: "Bulan gelap total memicu arus pasang surut (Spring Tide) yang kuat, sangat direkomendasikan untuk target pelagis besar.",
+      icon: "moon"
+    });
+  }
+
+  if (solunarFactorTitle) {
+    factors.push({
+      title: solunarFactorTitle,
+      description: solunarFactorDesc,
       icon: "moon"
     });
   }
