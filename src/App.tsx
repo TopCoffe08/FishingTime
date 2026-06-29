@@ -4,7 +4,7 @@ import { PRESET_LOCATIONS, SPECIES_DB } from './data';
 import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord, AnalysisResult, TideData } from './types';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { MapPin, Droplets, BookOpen, Fish, TrendingUp } from 'lucide-react';
+import { MapPin, Droplets, BookOpen, Fish, TrendingUp, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import localforage from 'localforage';
 import * as SunCalc from 'suncalc';
@@ -26,6 +26,7 @@ export default function App() {
   const [moonPhase, setMoonPhase] = useState<string>('');
   const [scoreRec, setScoreRec] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
   const [now, setNow] = useState(new Date());
@@ -212,23 +213,25 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    async function loadExternalData() {
-      setIsLoading(true);
-      try {
-        const { tide, weather, moonPhaseStr } = await fetchTideAndWeather(location.lat, location.lon, location.bmkgCode, location.bmkgSlug);
-        setTide(tide);
-        setWeather(weather);
-        setMoonPhase(moonPhaseStr);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
+  const loadExternalData = React.useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const { tide, weather, moonPhaseStr } = await fetchTideAndWeather(location.lat, location.lon, location.bmkgCode, location.bmkgSlug);
+      setTide(tide);
+      setWeather(weather);
+      setMoonPhase(moonPhaseStr);
+    } catch (err) {
+      console.error(err);
+      setFetchError('Gagal memuat data cuaca dan pasang surut. Periksa koneksi internet Anda.');
+    } finally {
+      setIsLoading(false);
     }
-    
+  }, [location.lat, location.lon, location.bmkgCode, location.bmkgSlug]);
+
+  useEffect(() => {
     loadExternalData();
-  }, [location]);
+  }, [loadExternalData]);
 
   useEffect(() => {
     async function updateRecommendation() {
@@ -290,6 +293,29 @@ export default function App() {
       </header>
 
       <main className="w-full max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 flex-1 pb-8">
+        {/* Error Banner */}
+        <AnimatePresence>
+          {fetchError && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-3xl flex flex-col sm:flex-row items-center gap-4 justify-between shadow-lg mb-6"
+            >
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <span className="text-sm font-medium">{fetchError}</span>
+              </div>
+              <button 
+                onClick={() => { setFetchError(null); loadExternalData(); }}
+                className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shrink-0"
+              >
+                Coba Lagi
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Tab Navigation */}
         <nav className="static bg-slate-900/95 md:bg-transparent backdrop-blur-xl border border-slate-700 md:border-none z-50 p-2 sm:p-3 md:pb-0 md:p-0 md:mb-10 flex justify-center rounded-3xl md:rounded-none mb-6">
           <div className="md:bg-slate-800/90 md:backdrop-blur-2xl md:border md:border-slate-600/50 md:p-2 md:rounded-[2.5rem] flex items-center justify-around md:gap-2 md:shadow-2xl">
