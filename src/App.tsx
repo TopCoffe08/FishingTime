@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { fetchTideAndWeather, fetchRecommendation } from './api';
 import { PRESET_LOCATIONS, SPECIES_DB } from './data';
 import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord, AnalysisResult, TideData } from './types';
@@ -122,8 +122,13 @@ export default function App() {
   const [isAnalisaExpanded, setIsAnalisaExpanded] = useState(false);
 
   const [logs, setLogs] = useState<CatchRecord[]>([]);
+  const logsRef = useRef<CatchRecord[]>([]);
   const [isLogsLoaded, setIsLogsLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    logsRef.current = logs;
+  }, [logs]);
 
   const [locationSearch, setLocationSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -235,7 +240,7 @@ export default function App() {
           weatherData: weather,
           moonPhaseStr: moonPhase,
           timeOfDay: format(new Date(), 'HH:mm'),
-          logs: logs
+          logs: logsRef.current
         });
         setScoreRec(rec);
       } catch (err) {
@@ -244,7 +249,7 @@ export default function App() {
     }
     
     updateRecommendation();
-  }, [location.name, tide, weather, moonPhase, logs]);
+  }, [location.name, tide, weather, moonPhase]);
 
   return (
     <div className="min-h-screen bg-[#0A0F1D] text-slate-100 pb-20 md:pb-0 font-sans flex flex-col items-center">

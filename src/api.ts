@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as SunCalc from 'suncalc';
 import { TidePrediction, WeatherCondition, TideData, BMKGTideInfo, AnalysisResult, AnalysisFactor } from './types';
 import { format, addHours, startOfHour } from 'date-fns';
+import { PRESET_LOCATIONS } from './data';
 
 export const BMKG_ATTRIBUTION = 'Sumber data pasang surut: BMKG';
 const BMKG_PUBLIC_API = 'https://peta-maritim.bmkg.go.id/public_api/pelabuhan';
@@ -316,42 +317,28 @@ async function getAllBMKGPorts(): Promise<any[]> {
   return [];
 }
 
-async function findClosestBMKGPort(lat: number, lon: number): Promise<string | null> {
-  const ports = await getAllBMKGPorts();
-  if (!ports || ports.length === 0) return null;
-
+async function findClosestBMKG(lat: number, lon: number): Promise<{ code: string | null, slug: string | null }> {
   let closestCode: string | null = null;
+  let closestSlug: string | null = null;
   let minDistance = Infinity;
+  // Radius max untuk pencarian port BMKG terdekat dari preset (sekitar 2 derajat lat/lon ~ 200km)
+  const MAX_DISTANCE = 2.0;
 
-  const getNum = (val: any) => {
-    if (typeof val === 'number') return val;
-    if (typeof val === 'string') return parseFloat(val.replace(',', '.'));
-    return null;
-  };
-
-  for (const port of ports) {
-    const pLatStr = port.lat ?? port.Lat ?? port.latitude ?? port.Latitude;
-    const pLonStr = port.lon ?? port.Lon ?? port.longitude ?? port.Longitude;
-    
-    if (pLatStr !== undefined && pLonStr !== undefined && pLatStr !== null && pLonStr !== null) {
-      const pLat = getNum(pLatStr);
-      const pLon = getNum(pLonStr);
-      
-      if (pLat !== null && pLon !== null && !isNaN(pLat) && !isNaN(pLon)) {
-        const dist = Math.sqrt(Math.pow(pLat - lat, 2) + Math.pow(pLon - lon, 2));
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestCode = port.Code || port.code;
-        }
+  for (const loc of PRESET_LOCATIONS) {
+    if (loc.bmkgSlug || loc.bmkgCode) {
+      const dist = Math.sqrt(Math.pow(loc.lat - lat, 2) + Math.pow(loc.lon - lon, 2));
+      if (dist < minDistance && dist < MAX_DISTANCE) {
+        minDistance = dist;
+        closestCode = loc.bmkgCode || null;
+        closestSlug = loc.bmkgSlug || null;
       }
     }
   }
-  
-  if (closestCode) {
-    console.log(`Nearest BMKG port found: ${closestCode} at dist ${minDistance}`);
-    return closestCode;
+
+  if (closestSlug || closestCode) {
+    console.log(`Nearest BMKG preset found at dist ${minDistance}`);
   }
-  return null;
+  return { code: closestCode, slug: closestSlug };
 }
 
 export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: string | null, bmkgSlug?: string | null): Promise<{
@@ -359,8 +346,10 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
   weather: WeatherCondition,
   moonPhaseStr: string
 }> {
-  if (!bmkgCode) {
-    bmkgCode = await findClosestBMKGPort(lat, lon);
+  if (!bmkgCode && !bmkgSlug) {
+    const closest = await findClosestBMKG(lat, lon);
+    bmkgCode = closest.code;
+    bmkgSlug = closest.slug;
   }
 
   // Fetch Weather and marine data from Open-Meteo
