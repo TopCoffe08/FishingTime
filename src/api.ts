@@ -8,6 +8,53 @@ export const BMKG_ATTRIBUTION = 'Sumber data pasang surut: BMKG';
 const BMKG_PUBLIC_API = 'https://peta-maritim.bmkg.go.id/public_api/pelabuhan';
 const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
+const BULAN_ID: Record<string, string> = {
+  'Jan':'Jan','Feb':'Feb','Mar':'Mar','Apr':'Apr',
+  'Mei':'May','Jun':'Jun','Jul':'Jul','Agu':'Aug',
+  'Sep':'Sep','Okt':'Oct','Nov':'Nov','Des':'Dec'
+};
+
+function parseBMKGDate(timeStr: string): Date {
+  try {
+    const parts = timeStr.split(',');
+    if (parts.length < 2) return new Date();
+    const timePart = parts[1].trim().replace('.', ':');
+    const dateParts = parts[0].trim().split(' ');
+    if (dateParts.length < 3) return new Date();
+    const day  = dateParts[0];
+    const mon  = BULAN_ID[dateParts[1]] || dateParts[1];
+    const year = dateParts[2].length === 2 ? '20' + dateParts[2] : dateParts[2];
+    const result = new Date(`${day} ${mon} ${year} ${timePart} UTC`);
+    return isNaN(result.getTime()) ? new Date() : result;
+  } catch {
+    return new Date();
+  }
+}
+
+function parseWeatherCodeFromDesc(desc: string): number {
+  const d = desc.toLowerCase();
+  if (d.includes('cerah') && !d.includes('berawan')) return 0;
+  if (d.includes('cerah berawan') || d.includes('berawan')) return 2;
+  if (d.includes('berawan tebal')) return 3;
+  if (d.includes('hujan ringan') || d.includes('gerimis')) return 61;
+  if (d.includes('hujan sedang')) return 63;
+  if (d.includes('hujan lebat')) return 65;
+  if (d.includes('petir') || d.includes('badai guntur')) return 95;
+  if (d.includes('kabut')) return 45;
+  return 1; // default: partly cloudy
+}
+
+function windLabelToDeg(label: string): number {
+  const map: Record<string, number> = {
+    'Utara':0,'Timur Laut':45,'Timur':90,'Tenggara':135,
+    'Selatan':180,'Barat Daya':225,'Barat':270,'Barat Laut':315
+  };
+  for (const [key, val] of Object.entries(map)) {
+    if (label.toLowerCase().includes(key.toLowerCase())) return val;
+  }
+  return 0;
+}
+
 export async function scrapeBMKGFromSlug(slug: string): Promise<{
   hourlyTide: TideData[],
   currentWeather: WeatherCondition | null
@@ -19,7 +66,10 @@ export async function scrapeBMKGFromSlug(slug: string): Promise<{
     if (!html || typeof html !== 'string') return null;
 
     const tbodyMatch = html.match(/<tbody.*?<\/tbody>/gis);
-    if (!tbodyMatch) return null;
+    if (!tbodyMatch) {
+      console.warn('BMKG: halaman dirender JS, scraping tidak berhasil. Fallback ke public API.');
+      return null;
+    }
 
     const tbody = tbodyMatch[0];
     const rows = tbody.split('<tr');
@@ -28,8 +78,6 @@ export async function scrapeBMKGFromSlug(slug: string): Promise<{
     const hourlyTide: TideData[] = [];
     let currentWeather: WeatherCondition | null = null;
 
-    const now = new Date();
-    
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       // Time: <div class="time-main"...>24 Jun 26, 00.00</div>
@@ -38,30 +86,7 @@ export async function scrapeBMKGFromSlug(slug: string): Promise<{
       if (!timeMatch || tds.length < 10) continue;
       
       const timeStr = timeMatch[1].trim(); // e.g. "24 Jun 26, 00.00"
-      
-      // Parse the time string to a Date object
-      // format: "DD MMM YY, HH.mm" -> "24 Jun 26, 00.00"
-      // Wait, we can just assume it starts from "00:00 UTC" of the requested forecast day and increments hourly.
-      // But let's try to just parse it simply or use the offset.
-      // Better yet, just use new Date(timeStr.replace(',', '').replace('.', ':'))
-      // It might be Indonesian short months though. We can just add (i) hours from a base time if parsing fails.
-      // Let's use `startOfHour(now)` and add hours, because the table starts from 00:00 UTC of today or past day.
-      // Actually, we can look at "24 Jun 26, 00.00" -> it's UTC time. We can convert to local.
-      
-      let dateObj = new Date();
-      try {
-        const parts = timeStr.split(',');
-        if (parts.length === 2) {
-           const timePart = parts[1].trim().replace('.', ':');
-           const datePart = parts[0].trim();
-           dateObj = new Date(`${datePart} ${timePart} UTC`);
-        }
-      } catch(e) {}
-      
-      if (isNaN(dateObj.getTime())) {
-        // Fallback if parsing fails
-        dateObj = addHours(startOfHour(now), i - 12); // rough estimate
-      }
+      const dateObj = parseBMKGDate(timeStr);
 
       // Tide (Pasut): <span class="font-medium text-gray-900"...>-0.04 <span...
       const tideMatch = tds[9]?.match(/>([^<]+)<span class="text-gray-500/);
@@ -111,9 +136,9 @@ export async function scrapeBMKGFromSlug(slug: string): Promise<{
 
         currentWeather = {
           temperature: temp,
-          weatherCode: 1, // mock
+          weatherCode: parseWeatherCodeFromDesc(desc),
           windSpeed: Math.round(windSpeedKt * 1.852), // convert kt to km/h
-          windDirectionDeg: 0,
+          windDirectionDeg: windLabelToDeg(windDirLabel),
           windDirectionLabel: windDirLabel,
           description: desc,
           dataSource: 'bmkg'
@@ -142,9 +167,6 @@ export async function fetchBMKGTide(bmkgCode: string): Promise<BMKGTideInfo | nu
     if (!res.data) return null;
 
     const allPorts = Array.isArray(res.data) ? res.data : Object.values(res.data);
-    if (allPorts.length > 0) {
-      console.log('BMKG Port 0:', allPorts[0]);
-    }
     const portData: any = allPorts.find((p: any) => p.Code === bmkgCode || p.code === bmkgCode);
 
     if (!portData) {
@@ -335,9 +357,6 @@ async function findClosestBMKG(lat: number, lon: number): Promise<{ code: string
     }
   }
 
-  if (closestSlug || closestCode) {
-    console.log(`Nearest BMKG preset found at dist ${minDistance}`);
-  }
   return { code: closestCode, slug: closestSlug };
 }
 
@@ -445,13 +464,11 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
           if (scraped.currentWeather) {
              weatherCond = scraped.currentWeather;
           }
-          console.log('Berhasil menggunakan data BMKG (Scraped)');
         } else {
           bmkgTideInfo = await fetchBMKGTide(bmkgCode);
           if (bmkgTideInfo) {
             dataSource = 'bmkg';
             hourlyData = generateAnchoredTideCurve(bmkgTideInfo);
-            console.log('Berhasil menggunakan data BMKG (API Pasut)');
           }
         }
       } else {
@@ -459,7 +476,6 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
         if (bmkgTideInfo) {
           dataSource = 'bmkg';
           hourlyData = generateAnchoredTideCurve(bmkgTideInfo);
-          console.log('Berhasil menggunakan data BMKG (API Pasut)');
         }
       }
     }
@@ -478,7 +494,6 @@ export async function fetchTideAndWeather(lat: number, lon: number, bmkgCode?: s
         }
       }
     } else if (dataSource === 'estimated') {
-      console.log('Tidak ada data BMKG maupun Marine, fallback ke estimasi.');
       isFallback = true;
       hourlyData = generateFallbackSineWave(phaseValue, now);
     }
@@ -560,12 +575,17 @@ export async function fetchRecommendation(params: {
   timeOfDay: string;
   logs?: Array<{notes: string, date: string, location: string}>;
   solunarData?: { major1: any, major2: any, minor1: any, minor2: any } | null;
+  locationType?: string;
 }) {
   let score = 40; // Base score
   let reasonParts: string[] = [];
 
   const now = new Date();
   
+  const isSungai = ['Sungai', 'Anak Sungai'].includes(params.locationType || '');
+  const isMuara  = params.locationType === 'Muara';
+  const isLaut   = !isSungai && !isMuara;
+
   // 1. Tide condition analysis
   const status = params.tideData.status;
   const isRising = status === 'Pasang Naik';
@@ -573,20 +593,31 @@ export async function fetchRecommendation(params: {
   const isPeak = status === 'Pasang Puncak';
   const isLow = status === 'Surut';
   
-  if (isRising) {
-    score += 25;
-    reasonParts.push("air pasang naik membawa banyak oksigen dan pergerakan makanan alami ke perairan dangkal");
-  } else if (isFalling) {
-    score += 15;
-    reasonParts.push("arus surut membawa nutrien kembali ke perairan yang lebih dalam, ideal untuk mancing di area dasar / muara");
-  } else if (isPeak) {
-    score += 5;
-    reasonParts.push("air sedang pasang puncak (stagnan sejenak), aktivitas ikan cenderung pasif");
-  } else if (isLow) {
-    score += 5;
-    reasonParts.push("air sedang surut terendah (stagnan), ikan umumnya menjauhi perairan dangkal");
+  if (isSungai) {
+    reasonParts.push("spot sungai tidak terpengaruh pasang surut laut, fokus pada arus sungai dan musim");
   } else {
-    reasonParts.push("pergerakan arus laut stabil yang mungkin membuat ikan kurang aktif bergerak");
+    let tideScore = 0;
+    if (isRising) {
+      tideScore = 25;
+      reasonParts.push("air pasang naik membawa banyak oksigen dan pergerakan makanan alami ke perairan dangkal");
+    } else if (isFalling) {
+      tideScore = 15;
+      reasonParts.push("arus surut membawa nutrien kembali ke perairan yang lebih dalam, ideal untuk mancing di area dasar / muara");
+    } else if (isPeak) {
+      tideScore = 5;
+      reasonParts.push("air sedang pasang puncak (stagnan sejenak), aktivitas ikan cenderung pasif");
+    } else if (isLow) {
+      tideScore = 5;
+      reasonParts.push("air sedang surut terendah (stagnan), ikan umumnya menjauhi perairan dangkal");
+    } else {
+      reasonParts.push("pergerakan arus laut stabil yang mungkin membuat ikan kurang aktif bergerak");
+    }
+
+    if (isMuara) {
+      score += tideScore * 0.5;
+    } else {
+      score += tideScore;
+    }
   }
 
   // 2. Moon phase analysis using SunCalc for better logic
@@ -652,18 +683,34 @@ export async function fetchRecommendation(params: {
   else if (hour >= 15 && hour < 19) timeStr = "sore";
   else timeStr = "malam";
 
-  if (timeStr === "pagi") {
-    score += 20;
-    reasonParts.push("pagi hari sangat ideal ketika suhu air mulai hangat dan fitoplankton naik");
-  } else if (timeStr === "sore") {
-    score += 20;
-    reasonParts.push("sore menjelang senja merupakan jam aktif (feeding time) bagi mayoritas ikan target");
-  } else if (timeStr === "malam") {
-    score += 15;
-    reasonParts.push("malam hari menargetkan ikan predator atau dasar (bottom fishing)");
-  } else { // Siang
-    score -= 5;
-    reasonParts.push("suhu air panas di siang bolong sering membuat ikan berlindung ke perairan yang lebih dalam dan pasif");
+  if (isSungai) {
+    if (timeStr === "pagi") {
+      score += 20;
+      reasonParts.push("pagi hari sangat ideal ketika suhu air mulai hangat dan fitoplankton naik");
+    } else if (timeStr === "sore") {
+      score += 15;
+      reasonParts.push("sore menjelang senja merupakan jam aktif (feeding time) bagi mayoritas ikan target");
+    } else if (timeStr === "malam") {
+      score += 10;
+      reasonParts.push("malam hari menargetkan ikan predator atau dasar (bottom fishing)");
+    } else { // Siang
+      score -= 5;
+      reasonParts.push("suhu air panas di siang bolong sering membuat ikan berlindung ke perairan yang lebih dalam dan pasif");
+    }
+  } else {
+    if (timeStr === "pagi") {
+      score += 20;
+      reasonParts.push("pagi hari sangat ideal ketika suhu air mulai hangat dan fitoplankton naik");
+    } else if (timeStr === "sore") {
+      score += 20;
+      reasonParts.push("sore menjelang senja merupakan jam aktif (feeding time) bagi mayoritas ikan target");
+    } else if (timeStr === "malam") {
+      score += 15;
+      reasonParts.push("malam hari menargetkan ikan predator atau dasar (bottom fishing)");
+    } else { // Siang
+      score -= 5;
+      reasonParts.push("suhu air panas di siang bolong sering membuat ikan berlindung ke perairan yang lebih dalam dan pasif");
+    }
   }
 
   // 4. Weather integration
@@ -720,36 +767,45 @@ export async function fetchRecommendation(params: {
   const factors: AnalysisFactor[] = [];
 
   // Tide reasoning
-  if (isRising) {
+  if (isSungai) {
     factors.push({
-      title: "Kondisi Air (Pasang Naik)",
-      description: "Ini adalah waktu emas (golden hours). Pergerakan air membawa masuk pakan alami ke wilayah dangkal dan muara. Ikan target besar biasanya aktif menyergap mangsa.",
-      icon: "water"
-    });
-  } else if (isFalling) {
-    factors.push({
-      title: "Kondisi Air (Pasang Turun)",
-      description: "Saat air surut turun, ikan bermigrasi kembali menuju ke posisi yang lebih dalam (palung/drop off). Targetkan titik-titik tersebut atau mulut muara (estuary).",
-      icon: "water"
-    });
-  } else if (isPeak) {
-    factors.push({
-      title: "Kondisi Air (Pasang Puncak)",
-      description: "Air masuk fase pasang puncak (Tenang). Ikan mungkin mengurangi intensitas makan karena ketiadaan arus. Teknik mancing dasar dengan umpan atraktif disarankan.",
-      icon: "water"
-    });
-  } else if (isLow) {
-    factors.push({
-      title: "Kondisi Air (Surut Terendah)",
-      description: "Air surut terendah (Tenang). Air surut maksimal biasanya membuat perairan muara keruh. Ikan berkumpul di luar batas drop off perairan dalam.",
+      title: "Kondisi Air Sungai",
+      description: "Di perairan sungai, faktor kunci adalah debit air, kejernihan, dan musim. Musim hujan membawa hanyutan pakan alami. Targetkan lubuk dan belokan sungai.",
       icon: "water"
     });
   } else {
-    factors.push({
-      title: "Kondisi Air (Stagnan)",
-      description: "Jika arus terpantau lambat (neap tide), ikan akan cenderung diam (pasif). Disarankan menggunakan umpan hidup dan teknik dasar (bottom fishing) yang lambat.",
-      icon: "water"
-    });
+    let muaraStr = isMuara ? " (Muara: pengaruh pasang 50% dikombinasi arus sungai)" : "";
+    if (isRising) {
+      factors.push({
+        title: "Kondisi Air (Pasang Naik)",
+        description: "Ini adalah waktu emas (golden hours). Pergerakan air membawa masuk pakan alami ke wilayah dangkal dan muara. Ikan target besar biasanya aktif menyergap mangsa." + muaraStr,
+        icon: "water"
+      });
+    } else if (isFalling) {
+      factors.push({
+        title: "Kondisi Air (Pasang Turun)",
+        description: "Saat air surut turun, ikan bermigrasi kembali menuju ke posisi yang lebih dalam (palung/drop off). Targetkan titik-titik tersebut atau mulut muara (estuary)." + muaraStr,
+        icon: "water"
+      });
+    } else if (isPeak) {
+      factors.push({
+        title: "Kondisi Air (Pasang Puncak)",
+        description: "Air masuk fase pasang puncak (Tenang). Ikan mungkin mengurangi intensitas makan karena ketiadaan arus. Teknik mancing dasar dengan umpan atraktif disarankan." + muaraStr,
+        icon: "water"
+      });
+    } else if (isLow) {
+      factors.push({
+        title: "Kondisi Air (Surut Terendah)",
+        description: "Air surut terendah (Tenang). Air surut maksimal biasanya membuat perairan muara keruh. Ikan berkumpul di luar batas drop off perairan dalam." + muaraStr,
+        icon: "water"
+      });
+    } else {
+      factors.push({
+        title: "Kondisi Air (Stagnan)",
+        description: "Jika arus terpantau lambat (neap tide), ikan akan cenderung diam (pasif). Disarankan menggunakan umpan hidup dan teknik dasar (bottom fishing) yang lambat." + muaraStr,
+        icon: "water"
+      });
+    }
   }
 
   // Time reasoning
