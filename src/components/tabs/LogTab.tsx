@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { BookOpen, Plus, Download, BarChart2, UploadCloud, Clock, Edit3, X, MapPin, Droplets, Fish, Save } from 'lucide-react';
 import { format } from 'date-fns';
@@ -24,6 +24,36 @@ export const LogTab: React.FC<LogTabProps> = ({ logs, setLogs, location, weather
   const [newLength, setNewLength] = useState('');
   const [newBait, setNewBait] = useState('');
   const [searchLog, setSearchLog] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const ITEMS_PER_PAGE = 10;
+
+  const handleSearch = (val: string) => {
+    setSearchLog(val);
+    setCurrentPage(1);
+  };
+
+  const filteredLogs = useMemo(() => {
+    const q = searchLog.toLowerCase();
+    return logs
+      .slice()
+      .reverse()
+      .filter(log =>
+        !q ||
+        log.notes.toLowerCase().includes(q) ||
+        log.location.toLowerCase().includes(q) ||
+        (log.species || '').toLowerCase().includes(q) ||
+        (log.bait || '').toLowerCase().includes(q) ||
+        log.date.toLowerCase().includes(q)
+      );
+  }, [logs, searchLog]);
+
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLogs.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredLogs, currentPage]);
+
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
 
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(logs, null, 2);
@@ -105,13 +135,21 @@ export const LogTab: React.FC<LogTabProps> = ({ logs, setLogs, location, weather
     {!isAddingLog && logs.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-3">
-          <h2 className="text-lg font-black text-white px-2">Jurnal Tangkapan Saya</h2>
+          <div className="px-2">
+            <h2 className="text-lg font-black text-white">Jurnal Tangkapan Saya</h2>
+            <p className="text-xs text-slate-400 mt-1">
+              {searchLog 
+                ? `Menampilkan ${filteredLogs.length} dari ${logs.length} catatan`
+                : `${logs.length} catatan tersimpan`
+              }
+            </p>
+          </div>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <input 
               type="text" 
-              placeholder="Cari catatan..." 
+              placeholder="Cari spesies, umpan, lokasi, tanggal..." 
               value={searchLog}
-              onChange={(e) => setSearchLog(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               className="flex-1 min-w-[120px] bg-slate-900/60 border border-slate-700/50 text-slate-100 text-xs font-medium rounded-xl px-3 py-2 outline-none focus:border-teal-500"
             />
             <button onClick={handleExportJSON} title="Export JSON" className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl hover:bg-slate-700 transition">
@@ -132,9 +170,7 @@ export const LogTab: React.FC<LogTabProps> = ({ logs, setLogs, location, weather
           </div>
         </div>
         
-        {logs.slice().reverse()
-          .filter(log => log.notes.toLowerCase().includes(searchLog.toLowerCase()) || log.location.toLowerCase().includes(searchLog.toLowerCase()))
-          .map(log => (
+        {paginatedLogs.map(log => (
           <div key={log.id} className="bg-slate-800/50 p-5 rounded-3xl border border-slate-700 relative group overflow-hidden">
             <div className="mb-3 flex justify-between items-start">
               <div className="text-xs text-slate-400 font-bold flex items-center gap-2">
@@ -189,6 +225,30 @@ export const LogTab: React.FC<LogTabProps> = ({ logs, setLogs, location, weather
             <p className="font-medium text-slate-200 mt-3 whitespace-pre-wrap">{log.notes}</p>
           </div>
         ))}
+
+        {filteredLogs.length > ITEMS_PER_PAGE && (
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-6 border-t border-slate-800 gap-4">
+            <span className="text-xs font-medium text-slate-500">
+              Halaman {currentPage} dari {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-slate-800 text-slate-400 font-bold py-2 px-4 rounded-xl text-xs transition-colors"
+              >
+                ← Sebelumnya
+              </button>
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-slate-800 text-slate-400 font-bold py-2 px-4 rounded-xl text-xs transition-colors"
+              >
+                Berikutnya →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )}
 
