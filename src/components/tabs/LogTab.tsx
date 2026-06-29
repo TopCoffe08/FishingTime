@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, Plus, Download, BarChart2, UploadCloud, Clock, Edit3, X, MapPin, Droplets, Fish, Save } from 'lucide-react';
+import { BookOpen, Plus, Download, BarChart2, UploadCloud, Clock, Edit3, X, MapPin, Droplets, Fish, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { CatchRecord, FishingLocation, TidePrediction, WeatherCondition } from '../../types';
@@ -25,6 +25,7 @@ export const LogTab: React.FC<LogTabProps> = ({ logs, setLogs, location, weather
   const [newBait, setNewBait] = useState('');
   const [searchLog, setSearchLog] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [importMsg, setImportMsg] = useState<{type: 'success'|'error', text: string} | null>(null);
 
   const ITEMS_PER_PAGE = 10;
 
@@ -91,9 +92,11 @@ export const LogTab: React.FC<LogTabProps> = ({ logs, setLogs, location, weather
         const existingIds = new Set(logs.map(l => l.id));
         const newLogs = imported.filter(l => !existingIds.has(l.id));
         setLogs([...logs, ...newLogs]);
-        alert(`${newLogs.length} catatan berhasil diimpor.`);
+        setImportMsg({ type: 'success', text: `${newLogs.length} catatan berhasil diimpor.` });
+        setTimeout(() => setImportMsg(null), 3000);
       } catch (err) {
-        alert('Format file tidak valid.');
+        setImportMsg({ type: 'error', text: 'Format file tidak valid. Pastikan file JSON dari FishingTime.' });
+        setTimeout(() => setImportMsg(null), 4000);
       }
     };
     reader.readAsText(file);
@@ -134,6 +137,16 @@ export const LogTab: React.FC<LogTabProps> = ({ logs, setLogs, location, weather
 
     {!isAddingLog && logs.length > 0 && (
       <div className="flex flex-col gap-4">
+        {importMsg && (
+          <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium border
+            ${importMsg.type === 'success' 
+              ? 'bg-teal-500/10 text-teal-400 border-teal-500/30'
+              : 'bg-red-500/10 text-red-400 border-red-500/30'
+            }`}>
+            {importMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            {importMsg.text}
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-3">
           <div className="px-2">
             <h2 className="text-lg font-black text-white">Jurnal Tangkapan Saya</h2>

@@ -16,30 +16,24 @@ export default defineConfig(() => {
         workbox: {
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/api\.open-meteo\.com\/.*/i,
-              handler: 'NetworkFirst',
+              urlPattern: /^https:\/\/api\.open-meteo\.com\/.*/,
+              handler: 'StaleWhileRevalidate',
               options: {
-                cacheName: 'weather-api-cache',
+                cacheName: 'open-meteo-cache',
                 expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 // 24 hours
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 3  // 3 jam
                 }
               }
             },
             {
-              urlPattern: /^https:\/\/marine-api\.open-meteo\.com\/.*/i,
-              handler: 'NetworkFirst',
+              urlPattern: /^https:\/\/marine-api\.open-meteo\.com\/.*/,
+              handler: 'StaleWhileRevalidate',
               options: {
                 cacheName: 'marine-api-cache',
                 expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 // 24 hours
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 3  // 3 jam
                 }
               }
             }

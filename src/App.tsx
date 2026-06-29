@@ -4,11 +4,11 @@ import { PRESET_LOCATIONS, SPECIES_DB } from './data';
 import { FishingLocation, TidePrediction, WeatherCondition, CatchRecord, AnalysisResult, TideData } from './types';
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { MapPin, Droplets, BookOpen, Fish, TrendingUp, AlertCircle } from 'lucide-react';
+import { MapPin, Droplets, BookOpen, Fish, TrendingUp, AlertCircle, Bell, BellOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import localforage from 'localforage';
 import * as SunCalc from 'suncalc';
-import { calculateSolunarData, SolunarDayData } from './solunar';
+import { calculateSolunarData, SolunarDayData, SolunarPeriod } from './solunar';
 import { DashboardTab } from './components/tabs/DashboardTab';
 import { SpeciesTab } from './components/tabs/SpeciesTab';
 import { LogTab } from './components/tabs/LogTab';
@@ -28,6 +28,19 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(
+    typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+  );
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      setTimeout(() => {
+        Notification.requestPermission().then((res) => {
+          setNotifEnabled(res === 'granted');
+        });
+      }, 5000);
+    }
+  }, []);
 
   const [now, setNow] = useState(new Date());
   const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
@@ -234,6 +247,51 @@ export default function App() {
   }, [loadExternalData]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    if (!solunar) return;
+    
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const nowMs = Date.now();
+    const ADVANCE_MS = 15 * 60 * 1000; // 15 menit sebelumnya
+    
+    const scheduleNotif = (period: SolunarPeriod | null, label: string) => {
+      if (!period) return;
+      const delay = period.start.getTime() - ADVANCE_MS - nowMs;
+      if (delay <= 0 || delay > 12 * 3600 * 1000) return; // hanya dalam 12 jam ke depan
+      
+      const t = setTimeout(() => {
+        new Notification('🎣 FishingTime — ' + label, {
+          body: `Periode ${label} dimulai pukul ${format(period.start, 'HH:mm')}. Siapkan perlengkapan!`,
+          icon: '/icon.svg',
+          tag: 'solunar-' + period.start.getTime(), // mencegah duplikat
+        });
+      }, delay);
+      timers.push(t);
+    };
+    
+    scheduleNotif(solunar.major1, 'Major Solunar');
+    scheduleNotif(solunar.major2, 'Major Solunar');
+    scheduleNotif(solunar.minor1, 'Minor Solunar');
+    scheduleNotif(solunar.minor2, 'Minor Solunar');
+    
+    return () => timers.forEach(clearTimeout);
+  }, [solunar]);
+
+  const handleToggleNotif = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Browser Anda tidak mendukung notifikasi.');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      alert('Untuk menonaktifkan, buka Settings browser > Notifikasi > FishingTime');
+    } else {
+      const result = await Notification.requestPermission();
+      setNotifEnabled(result === 'granted');
+    }
+  };
+
+  useEffect(() => {
     async function updateRecommendation() {
       if (!tide || !weather || !moonPhase) return;
       try {
@@ -272,6 +330,13 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-3 sm:gap-6">
+            <button
+              onClick={handleToggleNotif}
+              className={`p-2 rounded-xl transition border ${notifEnabled ? 'bg-teal-500/10 text-teal-400 border-teal-500/30 hover:bg-teal-500/20' : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-slate-300'}`}
+              title={notifEnabled ? 'Notifikasi Aktif' : 'Aktifkan Notifikasi'}
+            >
+              {notifEnabled ? <Bell size={18} /> : <BellOff size={18} />}
+            </button>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-white">{location.name}</p>
               <p className="text-xs text-slate-400">{location.type}</p>

@@ -723,7 +723,7 @@ export async function fetchRecommendation(params: {
   if (desc.includes('hujan') && !desc.includes('petir') && !desc.includes('badai')) {
     score += 5;
     reasonParts.push("gerimis/hujan ringan mampu menambah oksigen dan membawa sisa makanan dari darat tanpa mengganggu jarak pandang di air");
-  } else if (desc.includes('badai') || desc.includes('petir') || wind > 30) {
+  } else if (desc.includes('badai') || desc.includes('petir') || wind > 50) {
     score -= 30; // Very dangerous / poor fishing
     reasonParts.push("kondisi badai, angin kencang atau ombak tinggi sangat berbahaya dan merusak jarak pandang di dalam air");
   } else if (temp > 32) {
@@ -836,7 +836,7 @@ export async function fetchRecommendation(params: {
       description: "Bagus untuk menyamarkan visibilitas bayangan pemancing, menambah suplai oksigen terlarut, dan menetralkan suhu permukaan air.",
       icon: "cloud"
     });
-  } else if (desc.includes('badai') || desc.includes('petir') || wind > 30) {
+  } else if (desc.includes('badai') || desc.includes('petir') || wind > 50) {
     factors.push({
       title: "Kondisi Cuaca BURUK (Bahaya)",
       description: "PERINGATAN: Berpotensi membahayakan keselamatan. Tekanan udara drastis memang dapat membuat ikan agresif, namun sangat tidak disarankan untuk melaut.",
@@ -879,7 +879,7 @@ export async function fetchRecommendation(params: {
     });
   }
 
-  if (wind > 20) {
+  if (wind > 35) {
     factors.push({
       title: "Peringatan Angin Kencang",
       description: `Angin cukup kuat (${wind} km/h) bisa menimbulkan hempasan ombak menyulitkan. Tetap berhati-hati dan cari spot terlindung dari arah angin (Leeward)!`,
